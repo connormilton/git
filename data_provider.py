@@ -36,7 +36,7 @@ class DataProvider:
         else:
             try:
                 logger.info(f"Initializing Polygon client with key starting with: {self.polygon_api_key[:4]}...")
-                self.polygon_client = RESTClient(self.polygon_api_key, timeout=30)
+                self.polygon_client = RESTClient(self.polygon_api_key)  # Remove the timeout parameter
                 logger.info("Polygon.io client initialized successfully")
                 
                 # Test the connection with a simple API call

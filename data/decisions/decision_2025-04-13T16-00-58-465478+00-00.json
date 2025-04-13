@@ -1,0 +1,19 @@
+{
+  "decision_id": "decision_2025-04-13T16-00-58-465478+00-00",
+  "timestamp": "2025-04-13T16:00:58.465478+00:00",
+  "market_regime": "unknown",
+  "llm_decisions": {
+    "tradeActions": [],
+    "tradeAmendments": [],
+    "reasoning": {
+      "market_regime": "unknown"
+    },
+    "raw_response": "{\n  \"error\": \"Insufficient data provided to generate trade recommendations. Please provide specific market data, including current prices and technical analysis indicators for Forex Majors.\"\n}"
+  },
+  "raw_llm_response": "{\n  \"error\": \"Insufficient data provided to generate trade recommendations. Please provide specific market data, including current prices and technical analysis indicators for Forex Majors.\"\n}",
+  "prompt_used": "# Advanced Market Analysis & Trading Recommendations\n\nYou are an expert AI trading analyst operating a **{ACCOUNT_CURRENCY}** spread betting account via IG. Your goal is to analyze current market conditions, identify high-probability trade setups, and manage existing positions based on the comprehensive data provided below.\n\n## Current Market Overview\n**Primary Market Regime: {CURRENT_MARKET_REGIME}**\n{DOMINANT_REGIME_DESC}\n\n## Account & Risk Information\n* Account Balance: {ACCOUNT_CURRENCY} {ACCOUNT_BALANCE}\n* Available Margin: {ACCOUNT_CURRENCY} {AVAILABLE_MARGIN}\n* Current Open Risk: {CURRENT_RISK_PERCENT}% ({ACCOUNT_CURRENCY} {CURRENT_RISK_AMOUNT})\n* Risk Per Trade Target: {RISK_PER_TRADE_PERCENT}% of balance\n* Maximum Portfolio Risk: {MAX_TOTAL_RISK_PERCENT}% of balance\n* Per-Currency Risk Cap: {PER_CURRENCY_RISK_CAP}% of balance\n\n## Current Open Positions & Risk Exposure\n```json\n{OPEN_POSITIONS_JSON}",
+  "trade_executions": [],
+  "amendments_executed": [],
+  "review_notes": "",
+  "outcome_summary": {}
+}

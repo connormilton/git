@@ -1,0 +1,79 @@
+{
+  "decision_id": "decision_2025-04-13T16-06-52-629408+00-00",
+  "timestamp": "2025-04-13T16:06:52.629408+00:00",
+  "market_regime": "unknown",
+  "llm_decisions": {
+    "tradeActions": [
+      {
+        "epic": "CS.D.EURUSD.MINI.IP",
+        "action": "BUY",
+        "stop_distance": 20,
+        "limit_distance": 40,
+        "confidence": "high",
+        "stop_loss_pips": "20",
+        "limit_pips": "40"
+      },
+      {
+        "epic": "CS.D.USDJPY.MINI.IP",
+        "action": "SELL",
+        "stop_distance": 10,
+        "limit_distance": 20,
+        "confidence": "medium",
+        "stop_loss_pips": "10",
+        "limit_pips": "20"
+      }
+    ],
+    "tradeAmendments": [
+      {
+        "epic": "CS.D.GBPUSD.MINI.IP",
+        "action": "AMEND",
+        "new_stop_distance": 15,
+        "new_limit_distance": 30,
+        "new_stop_distance_dec": "15",
+        "new_limit_distance_dec": "30"
+      },
+      {
+        "epic": "CS.D.AUDUSD.MINI.IP",
+        "action": "CLOSE"
+      }
+    ],
+    "reasoning": {
+      "CS.D.EURUSD.MINI.IP": "Strong uptrend confirmed across multiple timeframes with bullish RSI divergence and MACD crossover, suggesting a high probability of continued upward movement.",
+      "CS.D.USDJPY.MINI.IP": "Bearish signals from both RSI and MACD on higher timeframes indicate potential for a downward move, aligning with a broader market downtrend.",
+      "CS.D.GBPUSD.MINI.IP": "Amending trade to secure profits and reduce exposure as technical indicators suggest a weakening bullish momentum.",
+      "CS.D.AUDUSD.MINI.IP": "Closing position to avoid potential losses from emerging bearish patterns and increasing market volatility.",
+      "global": "Current analysis shows a strong bias towards EUR and JPY movements, with necessary precautions taken on GBP and AUD to manage risks effectively.",
+      "market_regime": "unknown"
+    },
+    "raw_response": "{\n  \"tradeActions\": [\n    { \"epic\": \"CS.D.EURUSD.MINI.IP\", \"action\": \"BUY\", \"stop_distance\": 20, \"limit_distance\": 40, \"confidence\": \"high\" },\n    { \"epic\": \"CS.D.USDJPY.MINI.IP\", \"action\": \"SELL\", \"stop_distance\": 10, \"limit_distance\": 20, \"confidence\": \"medium\" }\n  ],\n  \"tradeAmendments\": [\n    { \"epic\": \"CS.D.GBPUSD.MINI.IP\", \"action\": \"AMEND\", \"new_stop_distance\": 15, \"new_limit_distance\": 30 },\n    { \"epic\": \"CS.D.AUDUSD.MINI.IP\", \"action\": \"CLOSE\" }\n  ],\n  \"reasoning\": {\n    \"CS.D.EURUSD.MINI.IP\": \"Strong uptrend confirmed across multiple timeframes with bullish RSI divergence and MACD crossover, suggesting a high probability of continued upward movement.\",\n    \"CS.D.USDJPY.MINI.IP\": \"Bearish signals from both RSI and MACD on higher timeframes indicate potential for a downward move, aligning with a broader market downtrend.\",\n    \"CS.D.GBPUSD.MINI.IP\": \"Amending trade to secure profits and reduce exposure as technical indicators suggest a weakening bullish momentum.\",\n    \"CS.D.AUDUSD.MINI.IP\": \"Closing position to avoid potential losses from emerging bearish patterns and increasing market volatility.\",\n    \"global\": \"Current analysis shows a strong bias towards EUR and JPY movements, with necessary precautions taken on GBP and AUD to manage risks effectively.\"\n  }\n}"
+  },
+  "raw_llm_response": "{\n  \"tradeActions\": [\n    { \"epic\": \"CS.D.EURUSD.MINI.IP\", \"action\": \"BUY\", \"stop_distance\": 20, \"limit_distance\": 40, \"confidence\": \"high\" },\n    { \"epic\": \"CS.D.USDJPY.MINI.IP\", \"action\": \"SELL\", \"stop_distance\": 10, \"limit_distance\": 20, \"confidence\": \"medium\" }\n  ],\n  \"tradeAmendments\": [\n    { \"epic\": \"CS.D.GBPUSD.MINI.IP\", \"action\": \"AMEND\", \"new_stop_distance\": 15, \"new_limit_distance\": 30 },\n    { \"epic\": \"CS.D.AUDUSD.MINI.IP\", \"action\": \"CLOSE\" }\n  ],\n  \"reasoning\": {\n    \"CS.D.EURUSD.MINI.IP\": \"Strong uptrend confirmed across multiple timeframes with bullish RSI divergence and MACD crossover, suggesting a high probability of continued upward movement.\",\n    \"CS.D.USDJPY.MINI.IP\": \"Bearish signals from both RSI and MACD on higher timeframes indicate potential for a downward move, aligning with a broader market downtrend.\",\n    \"CS.D.GBPUSD.MINI.IP\": \"Amending trade to secure profits and reduce exposure as technical indicators suggest a weakening bullish momentum.\",\n    \"CS.D.AUDUSD.MINI.IP\": \"Closing position to avoid potential losses from emerging bearish patterns and increasing market volatility.\",\n    \"global\": \"Current analysis shows a strong bias towards EUR and JPY movements, with necessary precautions taken on GBP and AUD to manage risks effectively.\"\n  }\n}",
+  "prompt_used": "# Advanced Market Analysis & Trading Recommendations\n\nYou are an expert AI trading analyst operating a **{ACCOUNT_CURRENCY}** spread betting account via IG. Your goal is to analyze current market conditions, identify high-probability trade setups, and manage existing positions based on the comprehensive data provided below.\n\n## Current Market Overview\n**Primary Market Regime: {CURRENT_MARKET_REGIME}**\n{DOMINANT_REGIME_DESC}\n\n## Account & Risk Information\n* Account Balance: {ACCOUNT_CURRENCY} {ACCOUNT_BALANCE}\n* Available Margin: {ACCOUNT_CURRENCY} {AVAILABLE_MARGIN}\n* Current Open Risk: {CURRENT_RISK_PERCENT}% ({ACCOUNT_CURRENCY} {CURRENT_RISK_AMOUNT})\n* Risk Per Trade Target: {RISK_PER_TRADE_PERCENT}% of balance\n* Maximum Portfolio Risk: {MAX_TOTAL_RISK_PERCENT}% of balance\n* Per-Currency Risk Cap: {PER_CURRENCY_RISK_CAP}% of balance\n\n## Current Open Positions & Risk Exposure\n```json\n{OPEN_POSITIONS_JSON}\n```\n\n**Detailed Risk Exposure:**\n```json\n{RISK_EXPOSURE_JSON}\n```\n\n## Current Market Data\n**Market Snapshot (OHLC & Prices):**\n```json\n{MARKET_SNAPSHOT_JSON}\n```\n\n**Technical Indicators & Interpretations:**\n```json\n{TECHNICAL_INDICATORS_JSON}\n```\n\n**Multi-Timeframe Analysis:**\n```json\n{MULTI_TIMEFRAME_JSON}\n```\n\n**Market Regimes By Instrument:**\n```json\n{MARKET_REGIMES_JSON}\n```\n\n## Market Context\n**Recent Performance Metrics:**\n```json\n{PERFORMANCE_METRICS_JSON}\n```\n\n**Trading System Recommendations (Based on Historical Data):**\n```json\n{TRADE_RECOMMENDATIONS_JSON}\n```\n\n**Recent Trade History (Last {N_RECENT_TRADES} Trades):**\n```json\n{TRADE_HISTORY_JSON}\n```\n\n**Market News & Events:**\n{MARKET_NEWS_TEXT}\n\n## Trading Instructions\n\n1. **Analyze Current Market Conditions**\n   - Review technical indicators, market regimes, and multi-timeframe analysis\n   - Consider correlations between instruments and existing positions\n   - Evaluate recent performance metrics for insights on what's working\n   - Assess news impact on market sentiment and volatility\n\n2. **Review Existing Positions**\n   - Determine if any positions should be CLOSED due to:\n     * Reaching profit targets\n     * Deteriorating technical setup\n     * Adverse market conditions or news\n     * Risk management concerns\n   - Assess if stop losses should be moved to BREAKEVEN when in sufficient profit\n   - Evaluate if stops or limits should be AMENDED to:\n     * Lock in partial profits (trailing stop)\n     * Tighten risk on weakening setups\n     * Adapt to changing volatility conditions\n\n3. **Identify New Trading Opportunities**\n   - Look for setups aligned with the current market regime\n   - Prioritize instruments with strong historical performance\n   - Consider multi-timeframe confirmation (alignment across timeframes)\n   - Assign confidence levels (\"low\", \"medium\", \"high\") based on:\n     * Strength and clarity of the setup\n     * Alignment with dominant market regime\n     * Historical performance in similar conditions\n     * Risk/reward potential\n\n4. **Respect Risk Parameters**\n   - Stay within overall portfolio risk limits\n   - Consider correlation with existing positions\n   - Adapt position sizing to market volatility\n   - Be more selective in high-risk environments\n\n## Response Format\nRespond ONLY with a valid JSON object containing the following structure:\n\n```json\n{\n  \"tradeActions\": [\n    { \"epic\": \"CS.D.EURUSD.MINI.IP\", \"action\": \"BUY\", \"stop_distance\": 15, \"limit_distance\": 30, \"confidence\": \"high\" }\n  ],\n  \"tradeAmendments\": [\n    { \"epic\": \"CS.D.USDJPY.MINI.IP\", \"action\": \"AMEND\", \"new_stop_distance\": 12, \"new_limit_distance\": 24 },\n    { \"epic\": \"CS.D.GBPUSD.MINI.IP\", \"action\": \"CLOSE\" },\n    { \"epic\": \"CS.D.AUDUSD.MINI.IP\", \"action\": \"BREAKEVEN\" }\n  ],\n  \"reasoning\": {\n    \"CS.D.EURUSD.MINI.IP\": \"Strong uptrend confirmed across multiple timeframes with bullish RSI divergence and MACD crossover.\",\n    \"CS.D.USDJPY.MINI.IP\": \"Tightening stop to lock in profits as price approaches key resistance level.\",\n    \"CS.D.GBPUSD.MINI.IP\": \"Closing position due to breakdown of support and increasing downside momentum.\",\n    \"CS.D.AUDUSD.MINI.IP\": \"Moving to breakeven as the trade is showing profit but momentum is slowing.\",\n    \"global\": \"Markets showing mixed conditions with uptrend in EUR pairs but caution advised on GBP due to upcoming economic data.\"\n  }\n}\n```\n\nRemember:\n* All distance values MUST be positive numbers representing points/pips from current market price\n* Only recommend trades for instruments included in the market snapshot data\n* Base all recommendations on the provided data, not pre-existing knowledge\n* If markets are unclear or risk levels are concerning, it's acceptable to recommend no new trades\n* Never recommend increasing risk on existing trades or moving stops further away from current price",
+  "trade_executions": [
+    {
+      "instrument": "CS.D.EURUSD.MINI.IP",
+      "action_type": "NEW_TRADE",
+      "execution_result": {
+        "status": "REJECTED",
+        "reason": "Insufficient margin. Needed: 8484.32, Max Available: 368.81",
+        "direction": "BUY"
+      },
+      "execution_timestamp": "2025-04-13T16:06:53.965396+00:00",
+      "trade_details": null
+    },
+    {
+      "instrument": "CS.D.USDJPY.MINI.IP",
+      "action_type": "NEW_TRADE",
+      "execution_result": {
+        "status": "REJECTED",
+        "reason": "Insufficient margin. Needed: 11936.28, Max Available: 368.81",
+        "direction": "SELL"
+      },
+      "execution_timestamp": "2025-04-13T16:06:55.338694+00:00",
+      "trade_details": null
+    }
+  ],
+  "amendments_executed": [],
+  "review_notes": "",
+  "outcome_summary": {}
+}
