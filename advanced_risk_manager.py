@@ -499,10 +499,37 @@ class AdvancedRiskManager:
         if calculated_size < min_deal_size:
             logger.warning(f"Calculated size {calculated_size:.2f} < Min {min_deal_size} for {epic}. Using Min.")
 
-        # 11. Calculate final risk with adjusted size
+        # 11. Check margin requirements and potentially adjust size - ADDED CODE
+        margin_factor = instrument_details.get('marginFactor')
+        if margin_factor is not None and margin_factor > 0 and signal_price > 0:
+            try:
+                margin_needed = final_size * signal_price * margin_factor
+                margin_buffer_factor = decimal.Decimal('0.7')  # Using 70% of available margin
+                effective_available = self.available_funds * margin_buffer_factor
+                
+                # If margin required exceeds available, reduce position size
+                if margin_needed > effective_available and effective_available > 0:
+                    # Calculate the maximum size that fits within margin constraints
+                    max_size_for_margin = effective_available / (signal_price * margin_factor)
+                    
+                    # Round down to comply with minimum size increments
+                    max_size_for_margin = max_size_for_margin.quantize(decimal.Decimal("0.01"), rounding=decimal.ROUND_DOWN)
+                    
+                    # Ensure it's not below minimum deal size
+                    if max_size_for_margin >= min_deal_size:
+                        logger.warning(f"Reducing size from {final_size} to {max_size_for_margin} due to margin constraints")
+                        final_size = max_size_for_margin
+                    else:
+                        # Can't meet both margin and minimum size requirements
+                        return None, f"Cannot meet margin requirements with minimum size {min_deal_size}"
+            except Exception as e:
+                logger.error(f"Error adjusting size for margin: {e}")
+                # Continue with the calculation, margin will be checked again in constraints
+
+        # 12. Calculate final risk with adjusted size
         estimated_risk_acc_ccy = final_size * stop_distance_pips * vpp
 
-        # 12. Calculate stop and limit levels
+        # 13. Calculate stop and limit levels
         stop_level_abs = None
         limit_level_abs = None
 
@@ -515,7 +542,7 @@ class AdvancedRiskManager:
             if limit_pips:
                 limit_level_abs = float(signal_price - limit_pips)
 
-        # 13. Create final trade details
+        # 14. Create final trade details
         final_details = {
             'epic': epic,
             'direction': direction,
@@ -622,12 +649,13 @@ class AdvancedRiskManager:
                     logger.warning(reason)
                     return False, reason
                     
-        # 4. Check margin requirements
+        # 4. Check margin requirements - UPDATED TO USE 70% OF AVAILABLE MARGIN
         margin_check_passed = False
         if signal_price and margin_factor is not None and margin_factor >= 0 and trade_size > 0:
             try:
                 margin_needed = trade_size * signal_price * margin_factor
-                margin_buffer_factor = self.margin_buffer
+                # Use 70% of available margin as the maximum allowed
+                margin_buffer_factor = decimal.Decimal('0.7')  # Updated to 70%
                 effective_available = self.available_funds * margin_buffer_factor
                 logger.debug(f"Margin needed {epic}: {margin_needed:.2f}, Available (<{margin_buffer_factor*100}%): {effective_available:.2f}")
 

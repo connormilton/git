@@ -1,4 +1,4 @@
-# updated_polygon_provider.py - Enhanced implementation focusing on real-time forex data
+# data_provider.py - Fixed version to handle Polygon API changes
 
 import logging
 import decimal
@@ -12,17 +12,20 @@ import os
 # Check if polygon library is available
 try:
     from polygon import RESTClient
+    from polygon.exceptions import NoResultsError, BadResponse
     POLYGON_CLIENT_AVAILABLE = True
     logging.getLogger("DataProvider").info("Polygon library is available")
 except ImportError:
     RESTClient = None
+    NoResultsError = Exception
+    BadResponse = Exception
     POLYGON_CLIENT_AVAILABLE = False
     logging.getLogger("DataProvider").warning("Polygon library is not available, install with: pip install polygon-api-client")
 
 logger = logging.getLogger("TradingBot")
 
 class DataProvider:
-    """Handles fetching and processing market data from Polygon.io with focus on real-time data."""
+    """Handles fetching and processing market data from Polygon.io."""
     def __init__(self, config):
         self.config = config
         self.polygon_api_key = config.get('POLYGON_API_KEY')
@@ -36,7 +39,7 @@ class DataProvider:
         else:
             try:
                 logger.info(f"Initializing Polygon client with key starting with: {self.polygon_api_key[:4]}...")
-                self.polygon_client = RESTClient(self.polygon_api_key)  # Remove the timeout parameter
+                self.polygon_client = RESTClient(self.polygon_api_key, timeout=30)
                 logger.info("Polygon.io client initialized successfully")
                 
                 # Test the connection with a simple API call
@@ -59,13 +62,20 @@ class DataProvider:
         try:
             # Try getting a quote for a common forex pair
             ticker = "C:EURUSD"
-            last_quote = self.polygon_client.get_last_quote(ticker)
-            if last_quote:
-                logger.info(f"Polygon connection test successful. Got quote for {ticker}: Ask={last_quote.ask_price}, Bid={last_quote.bid_price}")
+            try:
+                last_quote = self.polygon_client.get_last_quote(ticker)
+                if hasattr(last_quote, 'ask_price') and hasattr(last_quote, 'bid_price'):
+                    logger.info(f"Polygon connection test successful. Got quote for {ticker}: Ask={last_quote.ask_price}, Bid={last_quote.bid_price}")
+                    return True
+                else:
+                    logger.warning(f"Polygon connection test: Got quote for {ticker}, but structure unexpected. Attributes: {dir(last_quote)}")
+                    return True
+            except Exception as quote_err:
+                logger.warning(f"Failed to get last quote for {ticker}, trying ticker details: {quote_err}")
+                # Fallback to ticker details if quotes aren't working
+                ticker_details = self.polygon_client.get_ticker_details(ticker)
+                logger.info(f"Polygon connection test successful using ticker details for {ticker}")
                 return True
-            else:
-                logger.warning(f"Polygon connection test: No quote data for {ticker}")
-                return False
         except Exception as e:
             logger.error(f"Polygon connection test failed: {e}")
             return False
@@ -128,18 +138,61 @@ class DataProvider:
             if not last_quote:
                 logger.warning(f"No quote data available for {polygon_ticker}")
                 return None
-                
-            # Format the quote data
-            quote_data = {
-                'ask': decimal.Decimal(str(last_quote.ask_price)),
-                'bid': decimal.Decimal(str(last_quote.bid_price)),
-                'timestamp': last_quote.timestamp / 1000  # Convert milliseconds to seconds
-            }
             
-            # Cache the quote
-            self.quote_cache[polygon_ticker] = quote_data
-            
-            return quote_data
+            # Format the quote data - with robust attribute checking
+            try:
+                # Check if we have the expected attributes
+                if hasattr(last_quote, 'ask_price') and hasattr(last_quote, 'bid_price'):
+                    ask_price = decimal.Decimal(str(last_quote.ask_price))
+                    bid_price = decimal.Decimal(str(last_quote.bid_price))
+                    
+                    # Get timestamp if available, otherwise use current time
+                    timestamp = datetime.now(timezone.utc).timestamp()
+                    if hasattr(last_quote, 'timestamp'):
+                        try:
+                            timestamp = float(last_quote.timestamp) / 1000  # Convert milliseconds to seconds
+                        except (ValueError, TypeError, AttributeError):
+                            pass  # Keep default timestamp
+                    
+                    quote_data = {
+                        'ask': ask_price,
+                        'bid': bid_price,
+                        'timestamp': timestamp
+                    }
+                    
+                    # Cache the quote
+                    self.quote_cache[polygon_ticker] = quote_data
+                    
+                    return quote_data
+                else:
+                    # Log the actual structure for debugging
+                    logger.warning(f"Unexpected quote structure for {polygon_ticker}. Attributes: {dir(last_quote)}")
+                    
+                    # Try to extract relevant attributes dynamically
+                    quote_dict = {}
+                    for attr_name in dir(last_quote):
+                        if not attr_name.startswith('_') and attr_name not in ['raw', 'ticker']:
+                            try:
+                                quote_dict[attr_name] = getattr(last_quote, attr_name)
+                            except:
+                                pass
+                    
+                    logger.debug(f"Available quote attributes: {quote_dict}")
+                    
+                    # Fallback to any price data we can find
+                    if hasattr(last_quote, 'last_price'):
+                        price = decimal.Decimal(str(last_quote.last_price))
+                        quote_data = {
+                            'ask': price * decimal.Decimal('1.0001'),  # Tiny spread
+                            'bid': price * decimal.Decimal('0.9999'),
+                            'timestamp': datetime.now(timezone.utc).timestamp()
+                        }
+                        return quote_data
+                    
+                    return None
+            except Exception as attr_e:
+                logger.error(f"Error processing quote attributes for {polygon_ticker}: {attr_e}")
+                return None
         except Exception as e:
             logger.error(f"Error fetching quote for {polygon_ticker}: {e}")
             return None
@@ -187,10 +240,167 @@ class DataProvider:
                 adjusted=True,
                 limit=50000
             )
+            
             if not aggs:
                 logger.warning(f"No results from Polygon for {polygon_ticker}")
                 
-                # If no results, use real-time quotes to generate at least a single data point
+                # Use current quote to generate a simple dataframe
+                quote = self.get_latest_quote(epic)
+                if quote:
+                    # Create a minimal dataframe with current data
+                    now = datetime.now(timezone.utc)
+                    df = pd.DataFrame([{
+                        'Timestamp': now,
+                        'Open': quote['bid'],
+                        'High': quote['ask'], 
+                        'Low': quote['bid'],
+                        'Close': (quote['ask'] + quote['bid']) / 2,
+                        'Volume': decimal.Decimal('100')  # Placeholder
+                    }])
+                    df = df.set_index('Timestamp')
+                    logger.info(f"Created minimal dataframe with current quote for {polygon_ticker}")
+                    return df
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            try:
+                df = pd.DataFrame(aggs)
+                
+                # Debug what columns we actually have
+                logger.debug(f"Polygon aggs columns: {df.columns.tolist()}")
+                
+                # Handle different column naming possibilities
+                column_mapping = {
+                    'o': 'Open',
+                    'h': 'High',
+                    'l': 'Low',
+                    'c': 'Close',
+                    'v': 'Volume',
+                    't': 'Timestamp',  # Polygon likely uses 't' instead of 'Timestamp'
+                    'open': 'Open',
+                    'high': 'High',
+                    'low': 'Low',
+                    'close': 'Close',
+                    'volume': 'Volume',
+                    'timestamp': 'Timestamp'
+                }
+                
+                # Rename columns that exist in our DataFrame
+                df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
+                
+                # Now safely handle the timestamp conversion
+                if 'Timestamp' in df.columns:
+                    df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
+                    df = df.set_index('Timestamp')
+                elif 'timestamp' in df.columns:
+                    df['Timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
+                    df = df.set_index('Timestamp')
+                else:
+                    # Try to find any column that might be a timestamp
+                    logger.error(f"No Timestamp column found in Polygon response. Columns: {df.columns}")
+                    for col in df.columns:
+                        if 'time' in col.lower():
+                            logger.info(f"Trying to use '{col}' as timestamp")
+                            try:
+                                df['Timestamp'] = pd.to_datetime(df[col], unit='ms', utc=True)
+                                df = df.set_index('Timestamp')
+                                break
+                            except:
+                                logger.warning(f"Failed to convert '{col}' to timestamp")
+                    
+                    # If we still don't have an index, create one
+                    if 'Timestamp' not in df.columns and not isinstance(df.index, pd.DatetimeIndex):
+                        logger.warning(f"Creating artificial timestamp index for {polygon_ticker}")
+                        df['Timestamp'] = pd.date_range(end=end_dt, periods=len(df), freq=timeframe)
+                        df = df.set_index('Timestamp')
+
+                # Ensure we have all required OHLCV columns with correct types
+                for col in ['Open', 'High', 'Low', 'Close']:
+                    if col in df.columns:
+                        df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
+                    else:
+                        # If missing, duplicate the closest equivalent
+                        if 'Close' in df.columns and col != 'Close':
+                            df[col] = df['Close']
+                        else:
+                            # We need at least one price column
+                            logger.error(f"Missing required column {col} for {polygon_ticker}")
+                            return pd.DataFrame()
+
+                if 'Volume' in df.columns:
+                    df['Volume'] = df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
+                else:
+                    df['Volume'] = decimal.Decimal('0')
+
+                # Filter by date range
+                start_dt_aware = pd.Timestamp(start_dt.replace(tzinfo=timezone.utc))
+                end_dt_aware = pd.Timestamp(end_dt.replace(tzinfo=timezone.utc))
+                df = df[(df.index >= start_dt_aware) & (df.index <= end_dt_aware)]
+
+                logger.info(f"Fetched {len(df)} bars for {polygon_ticker} ({epic}) from Polygon.")
+                return df
+                
+            except Exception as df_err:
+                logger.error(f"Error processing Polygon data for {polygon_ticker}: {df_err}")
+                
+                # Try a more direct approach with the aggregates
+                try:
+                    # Create dataframe manually from aggs
+                    data = []
+                    for agg in aggs:
+                        data_point = {}
+                        
+                        # Extract attributes from agg object
+                        if hasattr(agg, 'timestamp'):
+                            data_point['Timestamp'] = pd.to_datetime(agg.timestamp, unit='ms', utc=True)
+                        else:
+                            # Use the 't' attribute if available
+                            for attr_name in ['t', 'time', 'ts']:
+                                if hasattr(agg, attr_name):
+                                    data_point['Timestamp'] = pd.to_datetime(getattr(agg, attr_name), unit='ms', utc=True)
+                                    break
+                            
+                            # Fallback to current time if no timestamp found
+                            if 'Timestamp' not in data_point:
+                                data_point['Timestamp'] = datetime.now(timezone.utc)
+                        
+                        # Extract price data
+                        for k, v in [('o', 'Open'), ('h', 'High'), ('l', 'Low'), ('c', 'Close'), ('v', 'Volume')]:
+                            if hasattr(agg, k):
+                                data_point[v] = getattr(agg, k)
+                            elif hasattr(agg, v.lower()):
+                                data_point[v] = getattr(agg, v.lower())
+                        
+                        # Ensure we have all price fields
+                        if 'Close' in data_point and not all(k in data_point for k in ['Open', 'High', 'Low']):
+                            close_val = data_point['Close']
+                            for k in ['Open', 'High', 'Low']:
+                                if k not in data_point:
+                                    data_point[k] = close_val
+                        
+                        data.append(data_point)
+                    
+                    if data:
+                        manual_df = pd.DataFrame(data)
+                        manual_df = manual_df.set_index('Timestamp')
+                        
+                        # Convert to Decimal
+                        for col in ['Open', 'High', 'Low', 'Close']:
+                            if col in manual_df.columns:
+                                manual_df[col] = manual_df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
+                        
+                        if 'Volume' in manual_df.columns:
+                            manual_df['Volume'] = manual_df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
+                        else:
+                            manual_df['Volume'] = decimal.Decimal('0')
+                        
+                        logger.info(f"Created manual DataFrame with {len(manual_df)} rows for {polygon_ticker}")
+                        return manual_df
+                    
+                except Exception as manual_err:
+                    logger.error(f"Failed to create manual DataFrame for {polygon_ticker}: {manual_err}")
+                
+                # Final fallback to a placeholder dataframe
                 quote = self.get_latest_quote(epic)
                 if quote:
                     # Create a small dataframe with just the current quote
@@ -204,40 +414,15 @@ class DataProvider:
                         'Volume': decimal.Decimal('100')  # Placeholder
                     }])
                     df = df.set_index('Timestamp')
-                    logger.info(f"Created minimal dataframe from current quote for {polygon_ticker}")
+                    logger.info(f"Created fallback dataframe from current quote for {polygon_ticker}")
                     return df
-                else:
-                    return pd.DataFrame()
-
-            df = pd.DataFrame(aggs)
-            df = df.rename(columns={
-                'o': 'Open',
-                'h': 'High',
-                'l': 'Low',
-                'c': 'Close',
-                'v': 'Volume',
-                't': 'Timestamp'
-            })
-            df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
-            df = df.set_index('Timestamp')
-
-            for col in ['Open', 'High', 'Low', 'Close']:
-                if col in df.columns:
-                    df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
-
-            if 'Volume' in df.columns:
-                df['Volume'] = df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
-
-            start_dt_aware = pd.Timestamp(start_dt.replace(tzinfo=timezone.utc))
-            end_dt_aware = pd.Timestamp(end_dt.replace(tzinfo=timezone.utc))
-            df = df[(df.index >= start_dt_aware) & (df.index <= end_dt_aware)]
-
-            logger.info(f"Fetched {len(df)} bars for {polygon_ticker} ({epic}) from Polygon.")
-            return df
+                
+                return pd.DataFrame()
+                
         except Exception as e:
-            logger.error(f"Polygon fetch error for {polygon_ticker}: {e}", exc_info=True)
+            logger.error(f"Polygon fetch error for {polygon_ticker}: {e}")
             
-            # Try to create a minimal dataframe from real-time quote as fallback
+            # If error, try to create fallback dataframe
             quote = self.get_latest_quote(epic)
             if quote:
                 now = datetime.now(timezone.utc)
@@ -250,7 +435,7 @@ class DataProvider:
                     'Volume': decimal.Decimal('100')  # Placeholder
                 }])
                 df = df.set_index('Timestamp')
-                logger.info(f"Created fallback dataframe from current quote for {polygon_ticker}")
+                logger.info(f"Created fallback dataframe from current quote after error for {polygon_ticker}")
                 return df
             
             return pd.DataFrame()
@@ -306,7 +491,9 @@ class DataProvider:
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / loss
+            # Avoid division by zero
+            rs = gain / loss.replace(0, np.nan)
+            rs = rs.fillna(0)
             df['RSI'] = 100 - (100 / (1 + rs))
         else:
             df['RSI'] = 50  # Neutral value for short data sets
@@ -344,8 +531,13 @@ class DataProvider:
 
         # Stochastic Oscillator
         if len(df) >= 14:
-            df['Stoch_K'] = 100 * ((df['Close'] - df['Low'].rolling(window=14).min()) / 
-                                    (df['High'].rolling(window=14).max() - df['Low'].rolling(window=14).min()))
+            low_14 = df['Low'].rolling(window=14).min()
+            high_14 = df['High'].rolling(window=14).max()
+            # Avoid division by zero
+            stoch_k_denom = high_14 - low_14
+            stoch_k_denom = stoch_k_denom.replace(0, np.nan)
+            stoch_k = 100 * ((df['Close'] - low_14) / stoch_k_denom)
+            df['Stoch_K'] = stoch_k.fillna(50)
             
             if len(df) >= 3:
                 df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
@@ -394,11 +586,17 @@ class DataProvider:
             atr = df['ATR_14']
             
             # Calculate DI+ and DI-
-            plus_di = 100 * plus_dm.rolling(window=14).mean() / atr
-            minus_di = 100 * minus_dm.rolling(window=14).mean() / atr
+            plus_di = 100 * plus_dm.rolling(window=14).mean() / atr.replace(0, np.nan)
+            minus_di = 100 * minus_dm.rolling(window=14).mean() / atr.replace(0, np.nan)
+            
+            # Fill NaN values
+            plus_di = plus_di.fillna(0)
+            minus_di = minus_di.fillna(0)
             
             # Calculate DX and ADX
-            dx = 100 * (abs(plus_di - minus_di) / (plus_di + minus_di)).replace([np.inf, -np.inf], np.nan).fillna(0)
+            di_sum = plus_di + minus_di
+            di_diff = abs(plus_di - minus_di)
+            dx = 100 * (di_diff / di_sum.replace(0, np.nan)).fillna(0)
             df['ADX'] = dx.ewm(span=14, adjust=False).mean()
             
             df['Plus_DI'] = plus_di
@@ -588,6 +786,10 @@ class DataProvider:
         if len(price_data) >= 2:
             # Create a DataFrame with all close prices
             price_df = pd.DataFrame(price_data)
+            
+            # Handle any NaN values 
+            price_df = price_df.fillna(method='ffill').fillna(method='bfill')
+            
             # Calculate correlation matrix
             corr_matrix = price_df.corr().round(2).to_dict()
             return corr_matrix
