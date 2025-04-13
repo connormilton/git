@@ -24,6 +24,57 @@ class PairSelector:
         # Default selection parameters
         self.max_pairs_to_analyze = config.get('MAX_PAIRS_TO_ANALYZE', 10)
         self.volatility_preference = config.get('VOLATILITY_PREFERENCE', 'balanced')
+    
+    def debug_available_pairs(self):
+        """Log available pairs for debugging."""
+        try:
+            if not self.available_pairs:
+                logger.warning("DEBUGGING: available_pairs dictionary is empty or None")
+                return
+                
+            logger.info(f"DEBUGGING: Found {len(self.available_pairs)} available pairs in config:")
+            for i, (epic, info) in enumerate(list(self.available_pairs.items())[:5]):  # Log first 5 for brevity
+                logger.info(f"  - {epic}: {info}")
+                
+            if len(self.available_pairs) > 5:
+                logger.info(f"  - ... and {len(self.available_pairs) - 5} more")
+        except Exception as e:
+            logger.error(f"Error debugging available pairs: {e}")
+
+    def debug_trading_sessions(self):
+        """Log trading sessions for debugging."""
+        try:
+            if not self.trading_sessions:
+                logger.warning("DEBUGGING: trading_sessions dictionary is empty or None")
+                return
+                
+            now = datetime.now(timezone.utc)
+            current_hour = now.hour
+            
+            logger.info(f"DEBUGGING: Current UTC hour is {current_hour}")
+            logger.info(f"DEBUGGING: Found {len(self.trading_sessions)} trading sessions in config:")
+            
+            for session, data in self.trading_sessions.items():
+                start = data.get('start_hour', 'unknown')
+                end = data.get('end_hour', 'unknown')
+                active = False
+                
+                if start != 'unknown' and end != 'unknown':
+                    if start <= end:
+                        active = current_hour >= start and current_hour < end
+                    else:  # Session spans midnight
+                        active = current_hour >= start or current_hour < end
+                        
+                pairs = data.get('active_pairs', [])
+                logger.info(f"  - {session}: Hours {start}-{end}, Active: {active}, Pairs: {len(pairs)}")
+                
+                # Show first few pairs
+                if pairs:
+                    sample_pairs = pairs[:3]
+                    logger.info(f"    Sample pairs: {', '.join(sample_pairs)}")
+                    
+        except Exception as e:
+            logger.error(f"Error debugging trading sessions: {e}")
         
     def get_current_trading_session(self):
         """Determine the current trading session based on UTC time."""
@@ -329,15 +380,45 @@ class PairSelector:
         if max_pairs is None:
             max_pairs = self.max_pairs_to_analyze
             
+        # Add debug logs at the start
+        logger.info("Starting pair selection process...")
+        self.debug_available_pairs()
+        self.debug_trading_sessions()
+        
         try:
             # Get all available pairs
-            all_pairs = list(self.available_pairs.keys())
+            all_pairs = list(self.available_pairs.keys()) if self.available_pairs else []
             
+            # If no pairs configured, fallback to default forex majors
+            if not all_pairs:
+                logger.warning("No pairs found in available_pairs, using default forex majors")
+                all_pairs = [
+                    "CS.D.EURUSD.MINI.IP",
+                    "CS.D.USDJPY.MINI.IP",
+                    "CS.D.GBPUSD.MINI.IP",
+                    "CS.D.AUDUSD.MINI.IP"
+                ]
+                
             # 1. First filter: Focus on pairs active in current session
             session_pairs = self.get_session_recommended_pairs()
             
             # If no session-specific pairs, use all pairs
             active_pairs = session_pairs if session_pairs else all_pairs
+            
+            # Extra safety: if still no active pairs, use the default set
+            if not active_pairs:
+                logger.warning("No active pairs found for current session, using all available pairs")
+                active_pairs = all_pairs
+                
+            # If still empty, this is a critical error, but we'll still provide default pairs
+            if not active_pairs:
+                logger.error("No pairs available after all fallbacks. Using emergency default set.")
+                active_pairs = [
+                    "CS.D.EURUSD.MINI.IP",
+                    "CS.D.USDJPY.MINI.IP",
+                    "CS.D.GBPUSD.MINI.IP",
+                    "CS.D.AUDUSD.MINI.IP"
+                ]
             
             # 2. Calculate individual scores
             volatility_scores = self.calculate_volatility_score(active_pairs)
@@ -408,10 +489,20 @@ class PairSelector:
                                     selected_pairs.append(alt_epic)
                                     break
             
+            # Force at least one pair if none were selected based on scores
+            if not selected_pairs and ranked_pairs:
+                logger.warning("No pairs met scoring criteria. Selecting top ranked pair by default.")
+                selected_pairs = [ranked_pairs[0][0]]
+            
+            # If still no pairs, use emergency default (should never happen with our fallbacks)
+            if not selected_pairs:
+                logger.warning("Emergency fallback: Using default forex major")
+                selected_pairs = ["CS.D.EURUSD.MINI.IP"]
+            
             # Log the selected pairs and their scores
             logger.info(f"Selected {len(selected_pairs)} pairs for analysis:")
             for epic in selected_pairs:
-                logger.info(f"  {epic}: Score={combined_scores[epic]:.2f}, "
+                logger.info(f"  {epic}: Score={combined_scores.get(epic, 0):.2f}, "
                            f"Setup={setup_scores.get(epic, 0):.2f}, "
                            f"Trend={trend_scores.get(epic, 0):.2f}, "
                            f"Perf={performance_scores.get(epic, 0):.2f}, "
@@ -420,7 +511,8 @@ class PairSelector:
             return selected_pairs
             
         except Exception as e:
-            logger.error(f"Error in pair selection: {e}")
+            logger.error(f"Error in pair selection: {e}", exc_info=True)
             # Fallback to default pairs
-            default_pairs = list(self.available_pairs.keys())[:max_pairs]
+            default_pairs = ["CS.D.EURUSD.MINI.IP", "CS.D.USDJPY.MINI.IP", "CS.D.GBPUSD.MINI.IP"]
+            logger.warning(f"Using fallback pairs due to selection error: {default_pairs}")
             return default_pairs

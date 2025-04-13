@@ -442,6 +442,9 @@ class LLMInterface:
                 parsed = json.loads(response_content)
                 validated = default_response.copy()
                 
+                # Store raw response for logging
+                validated["raw_response"] = response_content
+                
                 # Extract reasoning
                 validated["reasoning"] = parsed.get("reasoning", {}) if isinstance(parsed.get("reasoning"), dict) else {}
 

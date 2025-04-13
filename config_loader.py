@@ -89,6 +89,97 @@ def load_and_configure():
         "TRADE_HISTORY_FILE": "data/trade_history.csv",
         # Workflow
         "TRADING_CYCLE_SECONDS": 180,
+        
+        # Added forex pairs configuration
+        "EXPANDED_FOREX_PAIRS": {
+            "CS.D.EURUSD.MINI.IP": {
+                "description": "Euro/US Dollar",
+                "category": "forex",
+                "group": "majors"
+            },
+            "CS.D.USDJPY.MINI.IP": {
+                "description": "US Dollar/Japanese Yen",
+                "category": "forex",
+                "group": "majors"
+            },
+            "CS.D.GBPUSD.MINI.IP": {
+                "description": "British Pound/US Dollar",
+                "category": "forex",
+                "group": "majors"
+            },
+            "CS.D.AUDUSD.MINI.IP": {
+                "description": "Australian Dollar/US Dollar",
+                "category": "forex",
+                "group": "majors"
+            },
+            "CS.D.USDCAD.MINI.IP": {
+                "description": "US Dollar/Canadian Dollar",
+                "category": "forex",
+                "group": "majors"
+            },
+            "CS.D.EURGBP.MINI.IP": {
+                "description": "Euro/British Pound",
+                "category": "forex",
+                "group": "crosses"
+            },
+            "CS.D.EURJPY.MINI.IP": {
+                "description": "Euro/Japanese Yen",
+                "category": "forex",
+                "group": "crosses"
+            },
+            "CS.D.GBPJPY.MINI.IP": {
+                "description": "British Pound/Japanese Yen",
+                "category": "forex",
+                "group": "crosses"
+            },
+            "CS.D.AUDJPY.MINI.IP": {
+                "description": "Australian Dollar/Japanese Yen",
+                "category": "forex",
+                "group": "crosses"
+            },
+            "IX.D.FTSE.DAILY.IP": {
+                "description": "FTSE 100",
+                "category": "index",
+                "group": "uk"
+            },
+            "CS.D.USCGC.TODAY.IP": {
+                "description": "Gold",
+                "category": "commodity",
+                "group": "metals"
+            }
+        },
+
+        # Trading sessions config
+        "TRADING_SESSIONS": {
+            "ASIAN": {
+                "start_hour": 0,  # UTC
+                "end_hour": 8,    # UTC
+                "active_pairs": ["CS.D.USDJPY.MINI.IP", "CS.D.AUDJPY.MINI.IP", "CS.D.EURJPY.MINI.IP"]
+            },
+            "EUROPEAN": {
+                "start_hour": 7,  # UTC
+                "end_hour": 16,   # UTC
+                "active_pairs": ["CS.D.EURUSD.MINI.IP", "CS.D.GBPUSD.MINI.IP", "CS.D.EURGBP.MINI.IP", "IX.D.FTSE.DAILY.IP"]
+            },
+            "AMERICAN": {
+                "start_hour": 12, # UTC
+                "end_hour": 21,   # UTC
+                "active_pairs": ["CS.D.EURUSD.MINI.IP", "CS.D.GBPUSD.MINI.IP", "CS.D.USDCAD.MINI.IP"]
+            }
+        },
+
+        # Pair characteristics
+        "PAIR_CHARACTERISTICS": {
+            "CS.D.EURUSD.MINI.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 10},
+            "CS.D.USDJPY.MINI.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 9.35},
+            "CS.D.GBPUSD.MINI.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
+            "CS.D.AUDUSD.MINI.IP": {"volatility": "high", "liquidity": "medium", "pip_value": 10},
+            "CS.D.USDCAD.MINI.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 7.7},
+            "CS.D.EURGBP.MINI.IP": {"volatility": "low", "liquidity": "medium", "pip_value": 12.6},
+            "CS.D.EURJPY.MINI.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 9.35},
+            "IX.D.FTSE.DAILY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
+            "CS.D.USCGC.TODAY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10}
+        },
     }
     CONFIG.update(DEFAULT_CONFIG)
 

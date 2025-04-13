@@ -304,6 +304,13 @@ class AdvancedLLMPrompting:
             }
             
         return formatted
+
+    # Custom JSON encoder to handle Decimal objects
+    class DecimalEncoder(json.JSONEncoder):
+        def default(self, o):
+            if isinstance(o, decimal.Decimal):
+                return float(o)
+            return super().default(o)
         
     def generate_advanced_prompt(self, portfolio, market_data, data_provider, risk_manager):
         """
@@ -388,6 +395,7 @@ class AdvancedLLMPrompting:
         # Prepare context data for template
         current_risk_percent = (total_risk / balance * 100) if balance > 0 else decimal.Decimal('0.0')
         
+        # Create context data with proper JSON serialization of Decimal values
         context_data = {
             "ACCOUNT_BALANCE": f"{balance:.2f}",
             "AVAILABLE_MARGIN": f"{available:.2f}",
@@ -397,19 +405,19 @@ class AdvancedLLMPrompting:
             "RISK_PER_TRADE_PERCENT": f"{self.config['RISK_PER_TRADE_PERCENT']:.2f}",
             "MAX_TOTAL_RISK_PERCENT": f"{self.config['MAX_TOTAL_RISK_PERCENT']:.2f}",
             "PER_CURRENCY_RISK_CAP": f"{self.config['PER_CURRENCY_RISK_CAP']:.2f}",
-            "OPEN_POSITIONS_JSON": json.dumps(positions, indent=2),
-            "MARKET_SNAPSHOT_JSON": json.dumps(market_data, indent=2),
-            "TECHNICAL_INDICATORS_JSON": json.dumps(formatted_technicals, indent=2),
-            "RISK_EXPOSURE_JSON": json.dumps(risk_exposure, indent=2),
-            "MULTI_TIMEFRAME_JSON": json.dumps(formatted_mtf, indent=2),
-            "PERFORMANCE_METRICS_JSON": json.dumps(formatted_performance, indent=2),
-            "TRADE_RECOMMENDATIONS_JSON": json.dumps(trade_recommendations, indent=2),
-            "TRADE_HISTORY_JSON": json.dumps(trade_history, indent=2),
+            "OPEN_POSITIONS_JSON": json.dumps(positions, indent=2, cls=self.DecimalEncoder),
+            "MARKET_SNAPSHOT_JSON": json.dumps(market_data, indent=2, cls=self.DecimalEncoder),
+            "TECHNICAL_INDICATORS_JSON": json.dumps(formatted_technicals, indent=2, cls=self.DecimalEncoder),
+            "RISK_EXPOSURE_JSON": json.dumps(risk_exposure, indent=2, cls=self.DecimalEncoder),
+            "MULTI_TIMEFRAME_JSON": json.dumps(formatted_mtf, indent=2, cls=self.DecimalEncoder),
+            "PERFORMANCE_METRICS_JSON": json.dumps(formatted_performance, indent=2, cls=self.DecimalEncoder),
+            "TRADE_RECOMMENDATIONS_JSON": json.dumps(trade_recommendations, indent=2, cls=self.DecimalEncoder),
+            "TRADE_HISTORY_JSON": json.dumps(trade_history, indent=2, cls=self.DecimalEncoder),
             "MARKET_NEWS_TEXT": news_text,
             "CURRENT_MARKET_REGIME": dominant_regime.upper(),
             "DOMINANT_REGIME_DESC": self._get_regime_description(dominant_regime),
             "N_RECENT_TRADES": self.config['N_RECENT_TRADES_FEEDBACK'],
-            "MARKET_REGIMES_JSON": json.dumps(market_regimes, indent=2)
+            "MARKET_REGIMES_JSON": json.dumps(market_regimes, indent=2, cls=self.DecimalEncoder)
         }
         
         # Try formatting the template

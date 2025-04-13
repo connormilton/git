@@ -20,8 +20,14 @@ from trade_executor import ExecutionHandler
 from decision_logger import DecisionLogger
 from trading_ig.rest import ApiExceededException
 
-# Import the process_llm_recommendations_with_logging function
-from process_llm_recommendations_with_logging import process_llm_recommendations_with_logging
+# Import error handling for process_llm_recommendations_with_logging
+try:
+    from process_llm_recommendations_with_logging import process_llm_recommendations_with_logging
+except ImportError:
+    # Fallback to simplified version if import fails
+    from llm_process import process_llm_recommendations_with_logging
+    logger = logging.getLogger("TradingBot")
+    logger.warning("Using simplified LLM recommendation processing due to import failure")
 
 logger = logging.getLogger("TradingBot")
 
@@ -285,9 +291,16 @@ def run_trading_bot():
             print("🔍 Selecting optimal trading pairs...")
             best_pairs = pair_selector.select_best_pairs(max_pairs=config.get('MAX_PAIRS_TO_ANALYZE', 10))
             if not best_pairs:
-                logger.error("No valid pairs selected. Stopping.")
-                print("❌ ERROR: No valid pairs selected. Stopping trading bot.")
-                break
+                logger.warning("No valid pairs selected. Will skip this cycle and try again later.")
+                print("⚠️ WARNING: No valid pairs selected for this cycle. Will try again next cycle.")
+                # Instead of breaking/stopping, we'll continue to the next cycle
+                cycle_duration = time.time() - cycle_start_time
+                sleep_time = max(10, config.get('TRADING_CYCLE_SECONDS', 180) - cycle_duration)
+                logger.info(f"Cycle ended (No pairs selected). Sleeping {sleep_time:.2f}s...")
+                print(f"\n⏱️ Cycle completed in {cycle_duration:.2f}s. Sleeping for {sleep_time:.2f}s until next cycle...")
+                print("="*100)
+                time.sleep(sleep_time)
+                continue  # Skip to next iteration instead of stopping
                 
             print(f"✅ Selected {len(best_pairs)} pairs for analysis: {', '.join(best_pairs)}\n")
 

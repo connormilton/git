@@ -1,0 +1,161 @@
+# Script to fix the prompt template issue
+
+import os
+import sys
+
+def fix_prompt_template():
+    """Fix the prompt template by removing problematic newlines and quotes."""
+    
+    # Define paths
+    prompt_dir = "llm_prompts"
+    template_file = os.path.join(prompt_dir, "combined_trade_analysis.txt")
+    
+    # Make sure directory exists
+    if not os.path.exists(prompt_dir):
+        os.makedirs(prompt_dir, exist_ok=True)
+        print(f"Created directory: {prompt_dir}")
+    
+    # Fixed template content
+    fixed_template = """# Advanced Market Analysis & Trading Recommendations
+
+You are an expert AI trading analyst operating a **{ACCOUNT_CURRENCY}** spread betting account via IG. Your goal is to analyze current market conditions, identify high-probability trade setups, and manage existing positions based on the comprehensive data provided below.
+
+## Current Market Overview
+**Primary Market Regime: {CURRENT_MARKET_REGIME}**
+{DOMINANT_REGIME_DESC}
+
+## Account & Risk Information
+* Account Balance: {ACCOUNT_CURRENCY} {ACCOUNT_BALANCE}
+* Available Margin: {ACCOUNT_CURRENCY} {AVAILABLE_MARGIN}
+* Current Open Risk: {CURRENT_RISK_PERCENT}% ({ACCOUNT_CURRENCY} {CURRENT_RISK_AMOUNT})
+* Risk Per Trade Target: {RISK_PER_TRADE_PERCENT}% of balance
+* Maximum Portfolio Risk: {MAX_TOTAL_RISK_PERCENT}% of balance
+* Per-Currency Risk Cap: {PER_CURRENCY_RISK_CAP}% of balance
+
+## Current Open Positions & Risk Exposure
+```json
+{OPEN_POSITIONS_JSON}
+```
+
+**Detailed Risk Exposure:**
+```json
+{RISK_EXPOSURE_JSON}
+```
+
+## Current Market Data
+**Market Snapshot (OHLC & Prices):**
+```json
+{MARKET_SNAPSHOT_JSON}
+```
+
+**Technical Indicators & Interpretations:**
+```json
+{TECHNICAL_INDICATORS_JSON}
+```
+
+**Multi-Timeframe Analysis:**
+```json
+{MULTI_TIMEFRAME_JSON}
+```
+
+**Market Regimes By Instrument:**
+```json
+{MARKET_REGIMES_JSON}
+```
+
+## Market Context
+**Recent Performance Metrics:**
+```json
+{PERFORMANCE_METRICS_JSON}
+```
+
+**Trading System Recommendations (Based on Historical Data):**
+```json
+{TRADE_RECOMMENDATIONS_JSON}
+```
+
+**Recent Trade History (Last {N_RECENT_TRADES} Trades):**
+```json
+{TRADE_HISTORY_JSON}
+```
+
+**Market News & Events:**
+{MARKET_NEWS_TEXT}
+
+## Trading Instructions
+
+1. **Analyze Current Market Conditions**
+   - Review technical indicators, market regimes, and multi-timeframe analysis
+   - Consider correlations between instruments and existing positions
+   - Evaluate recent performance metrics for insights on what's working
+   - Assess news impact on market sentiment and volatility
+
+2. **Review Existing Positions**
+   - Determine if any positions should be CLOSED due to:
+     * Reaching profit targets
+     * Deteriorating technical setup
+     * Adverse market conditions or news
+     * Risk management concerns
+   - Assess if stop losses should be moved to BREAKEVEN when in sufficient profit
+   - Evaluate if stops or limits should be AMENDED to:
+     * Lock in partial profits (trailing stop)
+     * Tighten risk on weakening setups
+     * Adapt to changing volatility conditions
+
+3. **Identify New Trading Opportunities**
+   - Look for setups aligned with the current market regime
+   - Prioritize instruments with strong historical performance
+   - Consider multi-timeframe confirmation (alignment across timeframes)
+   - Assign confidence levels ("low", "medium", "high") based on:
+     * Strength and clarity of the setup
+     * Alignment with dominant market regime
+     * Historical performance in similar conditions
+     * Risk/reward potential
+
+4. **Respect Risk Parameters**
+   - Stay within overall portfolio risk limits
+   - Consider correlation with existing positions
+   - Adapt position sizing to market volatility
+   - Be more selective in high-risk environments
+
+## Response Format
+Respond ONLY with a valid JSON object containing the following structure:
+
+```
+{
+  "tradeActions": [
+    { "epic": "CS.D.EURUSD.MINI.IP", "action": "BUY", "stop_distance": 15, "limit_distance": 30, "confidence": "high" }
+  ],
+  "tradeAmendments": [
+    { "epic": "CS.D.USDJPY.MINI.IP", "action": "AMEND", "new_stop_distance": 12, "new_limit_distance": 24 },
+    { "epic": "CS.D.GBPUSD.MINI.IP", "action": "CLOSE" },
+    { "epic": "CS.D.AUDUSD.MINI.IP", "action": "BREAKEVEN" }
+  ],
+  "reasoning": {
+    "CS.D.EURUSD.MINI.IP": "Strong uptrend confirmed across multiple timeframes with bullish RSI divergence and MACD crossover.",
+    "CS.D.USDJPY.MINI.IP": "Tightening stop to lock in profits as price approaches key resistance level.",
+    "CS.D.GBPUSD.MINI.IP": "Closing position due to breakdown of support and increasing downside momentum.",
+    "CS.D.AUDUSD.MINI.IP": "Moving to breakeven as the trade is showing profit but momentum is slowing.",
+    "global": "Markets showing mixed conditions with uptrend in EUR pairs but caution advised on GBP due to upcoming economic data."
+  }
+}
+```
+
+Remember:
+* All distance values MUST be positive numbers representing points/pips from current market price
+* Only recommend trades for instruments included in the market snapshot data
+* Base all recommendations on the provided data, not pre-existing knowledge
+* If markets are unclear or risk levels are concerning, it's acceptable to recommend no new trades
+* Never recommend increasing risk on existing trades or moving stops further away from current price"""
+
+    # Write the fixed template to file
+    with open(template_file, 'w') as f:
+        f.write(fixed_template)
+        
+    print(f"Fixed template written to: {template_file}")
+    
+    return template_file
+
+if __name__ == "__main__":
+    fixed_file = fix_prompt_template()
+    print(f"Successfully fixed prompt template. File is ready at: {fixed_file}")

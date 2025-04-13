@@ -1,0 +1,31 @@
+2025-04-13 15:39:36,847 - TradingBot - INFO - ----- Logging configured for TradingBot (Level: INFO) -----
+2025-04-13 15:39:36,847 - TradingBot - INFO - 🚀 Initializing Enhanced Forex AI Trader PID: 26116
+2025-04-13 15:39:36,848 - TradingBot - INFO - Connecting to IG as connormilton (LIVE)...
+2025-04-13 15:39:37,082 - TradingBot - INFO - Setting default IG account ID: INRKZ
+2025-04-13 15:39:37,179 - TradingBot - INFO - Account already active, continuing without switching.
+2025-04-13 15:39:37,180 - TradingBot - INFO - IG connection successful.
+2025-04-13 15:39:37,206 - TradingBot - INFO - Trade memory database initialized at data/trading_memory.db
+2025-04-13 15:39:37,207 - TradingBot - INFO - Created trade log file: data/trade_history.csv
+2025-04-13 15:39:37,208 - TradingBot - INFO - OpenAI setup completed.
+2025-04-13 15:39:37,211 - TradingBot - INFO - Initialized decision review file: data/decisions\decision_reviews.csv
+2025-04-13 15:39:37,539 - TradingBot - INFO - Fetched 2 open positions.
+2025-04-13 15:39:37,539 - TradingBot - INFO - Portfolio Updated: Balance=555.52, Available=409.79, Open Positions=2
+2025-04-13 15:39:37,540 - TradingBot - WARNING - Could not determine VPP for CS.D.USCGC.TODAY.IP, using default of 1.0
+2025-04-13 15:39:37,541 - TradingBot - WARNING - Position CS.D.USCGC.TODAY.IP has negative or zero points at risk. Risk calculation skipped.
+2025-04-13 15:39:37,541 - TradingBot - WARNING - Could not determine VPP for IX.D.FTSE.DAILY.IP, using default of 1.0
+2025-04-13 15:39:37,541 - TradingBot - INFO - Current open risk: 0.59 (0.11% of account)
+2025-04-13 15:39:37,541 - TradingBot - INFO - Risk manager updated: Balance=555.52, Risk Exposure=0.11%
+2025-04-13 15:39:37,542 - TradingBot - INFO - Performance multiplier updated: 0.8 (Win Rate: 0.00, Profit Factor: 0.00)
+2025-04-13 15:39:37,542 - TradingBot - INFO - --- Trading Cycle 2025-04-13T14:39:37+00:00 ---
+2025-04-13 15:39:37,850 - TradingBot - INFO - Fetched 2 open positions.
+2025-04-13 15:39:37,851 - TradingBot - INFO - Portfolio Updated: Balance=555.52, Available=409.79, Open Positions=2
+2025-04-13 15:39:37,852 - TradingBot - WARNING - Could not determine VPP for CS.D.USCGC.TODAY.IP, using default of 1.0
+2025-04-13 15:39:37,852 - TradingBot - WARNING - Position CS.D.USCGC.TODAY.IP has negative or zero points at risk. Risk calculation skipped.
+2025-04-13 15:39:37,852 - TradingBot - WARNING - Could not determine VPP for IX.D.FTSE.DAILY.IP, using default of 1.0
+2025-04-13 15:39:37,852 - TradingBot - INFO - Current open risk: 0.59 (0.11% of account)
+2025-04-13 15:39:37,852 - TradingBot - INFO - Risk manager updated: Balance=555.52, Risk Exposure=0.11%
+2025-04-13 15:39:37,853 - TradingBot - INFO - Performance multiplier updated: 0.8 (Win Rate: 0.00, Profit Factor: 0.00)
+2025-04-13 15:39:37,856 - TradingBot - INFO - Selected 0 pairs for analysis:
+2025-04-13 15:39:37,856 - TradingBot - ERROR - No valid pairs selected. Stopping.
+2025-04-13 15:39:37,858 - TradingBot - INFO - Trade memory database connection closed.
+2025-04-13 15:39:37,858 - TradingBot - INFO - Trading bot shutdown complete.
