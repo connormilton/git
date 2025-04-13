@@ -29,3 +29,156 @@
 2025-04-13 15:39:37,856 - TradingBot - ERROR - No valid pairs selected. Stopping.
 2025-04-13 15:39:37,858 - TradingBot - INFO - Trade memory database connection closed.
 2025-04-13 15:39:37,858 - TradingBot - INFO - Trading bot shutdown complete.
+2025-04-13 15:55:48,924 - TradingBot - INFO - ----- Logging configured for TradingBot (Level: INFO) -----
+2025-04-13 15:55:48,924 - TradingBot - INFO - 🚀 Initializing Enhanced Forex AI Trader PID: 19812
+2025-04-13 15:55:48,925 - TradingBot - INFO - Connecting to IG as connormilton (LIVE)...
+2025-04-13 15:55:49,218 - TradingBot - INFO - Setting default IG account ID: INRKZ
+2025-04-13 15:55:49,296 - TradingBot - INFO - Account already active, continuing without switching.
+2025-04-13 15:55:49,296 - TradingBot - INFO - IG connection successful.
+2025-04-13 15:55:49,296 - TradingBot - INFO - Initializing Polygon client with key starting with: KzYM...
+2025-04-13 15:55:49,297 - TradingBot - ERROR - Failed to initialize Polygon.io client: RESTClient.__init__() got an unexpected keyword argument 'timeout'
+2025-04-13 15:55:49,299 - TradingBot - INFO - Trade memory database initialized at data/trading_memory.db
+2025-04-13 15:55:49,301 - TradingBot - INFO - OpenAI setup completed.
+2025-04-13 15:55:49,793 - TradingBot - INFO - Fetched 2 open positions.
+2025-04-13 15:55:49,793 - TradingBot - INFO - Portfolio Updated: Balance=555.52, Available=409.79, Open Positions=2
+2025-04-13 15:55:49,794 - TradingBot - WARNING - Could not determine VPP for CS.D.USCGC.TODAY.IP, using default of 1.0
+2025-04-13 15:55:49,794 - TradingBot - WARNING - Position CS.D.USCGC.TODAY.IP has negative or zero points at risk. Risk calculation skipped.
+2025-04-13 15:55:49,794 - TradingBot - WARNING - Could not determine VPP for IX.D.FTSE.DAILY.IP, using default of 1.0
+2025-04-13 15:55:49,794 - TradingBot - INFO - Current open risk: 0.59 (0.11% of account)
+2025-04-13 15:55:49,794 - TradingBot - INFO - Risk manager updated: Balance=555.52, Risk Exposure=0.11%
+2025-04-13 15:55:49,795 - TradingBot - INFO - Performance multiplier updated: 0.8 (Win Rate: 0.00, Profit Factor: 0.00)
+2025-04-13 15:55:49,795 - TradingBot - INFO - --- Trading Cycle 2025-04-13T14:55:49+00:00 ---
+2025-04-13 15:55:50,086 - TradingBot - INFO - Fetched 2 open positions.
+2025-04-13 15:55:50,086 - TradingBot - INFO - Portfolio Updated: Balance=555.52, Available=409.79, Open Positions=2
+2025-04-13 15:55:50,087 - TradingBot - WARNING - Could not determine VPP for CS.D.USCGC.TODAY.IP, using default of 1.0
+2025-04-13 15:55:50,087 - TradingBot - WARNING - Position CS.D.USCGC.TODAY.IP has negative or zero points at risk. Risk calculation skipped.
+2025-04-13 15:55:50,087 - TradingBot - WARNING - Could not determine VPP for IX.D.FTSE.DAILY.IP, using default of 1.0
+2025-04-13 15:55:50,087 - TradingBot - INFO - Current open risk: 0.59 (0.11% of account)
+2025-04-13 15:55:50,087 - TradingBot - INFO - Risk manager updated: Balance=555.52, Risk Exposure=0.11%
+2025-04-13 15:55:50,088 - TradingBot - INFO - Performance multiplier updated: 0.8 (Win Rate: 0.00, Profit Factor: 0.00)
+2025-04-13 15:55:50,088 - TradingBot - INFO - Starting pair selection process...
+2025-04-13 15:55:50,088 - TradingBot - INFO - DEBUGGING: Found 11 available pairs in config:
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - CS.D.EURUSD.MINI.IP: {'description': 'Euro/US Dollar', 'category': 'forex', 'group': 'majors'}
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - CS.D.USDJPY.MINI.IP: {'description': 'US Dollar/Japanese Yen', 'category': 'forex', 'group': 'majors'}
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - CS.D.GBPUSD.MINI.IP: {'description': 'British Pound/US Dollar', 'category': 'forex', 'group': 'majors'}
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - CS.D.AUDUSD.MINI.IP: {'description': 'Australian Dollar/US Dollar', 'category': 'forex', 'group': 'majors'}
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - CS.D.USDCAD.MINI.IP: {'description': 'US Dollar/Canadian Dollar', 'category': 'forex', 'group': 'majors'}
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - ... and 6 more
+2025-04-13 15:55:50,089 - TradingBot - INFO - DEBUGGING: Current UTC hour is 14
+2025-04-13 15:55:50,089 - TradingBot - INFO - DEBUGGING: Found 3 trading sessions in config:
+2025-04-13 15:55:50,089 - TradingBot - INFO -   - ASIAN: Hours 0-8, Active: False, Pairs: 3
+2025-04-13 15:55:50,090 - TradingBot - INFO -     Sample pairs: CS.D.USDJPY.MINI.IP, CS.D.AUDJPY.MINI.IP, CS.D.EURJPY.MINI.IP
+2025-04-13 15:55:50,090 - TradingBot - INFO -   - EUROPEAN: Hours 7-16, Active: True, Pairs: 4
+2025-04-13 15:55:50,090 - TradingBot - INFO -     Sample pairs: CS.D.EURUSD.MINI.IP, CS.D.GBPUSD.MINI.IP, CS.D.EURGBP.MINI.IP
+2025-04-13 15:55:50,090 - TradingBot - INFO -   - AMERICAN: Hours 12-21, Active: True, Pairs: 3
+2025-04-13 15:55:50,090 - TradingBot - INFO -     Sample pairs: CS.D.EURUSD.MINI.IP, CS.D.GBPUSD.MINI.IP, CS.D.USDCAD.MINI.IP
+2025-04-13 15:55:50,090 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,090 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,090 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,090 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:50,091 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,091 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,091 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,091 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,091 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,092 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,092 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,093 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,093 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,093 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:50,094 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,094 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,094 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,095 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,095 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,095 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,095 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,095 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,096 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,096 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:50,096 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,096 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,096 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,096 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,097 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,097 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:50,097 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,097 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,097 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,097 - TradingBot - INFO - Selected 5 pairs for analysis:
+2025-04-13 15:55:50,097 - TradingBot - INFO -   CS.D.GBPUSD.MINI.IP: Score=0.35, Setup=0.00, Trend=0.50, Perf=0.50, Vol=1.50
+2025-04-13 15:55:50,098 - TradingBot - INFO -   IX.D.FTSE.DAILY.IP: Score=0.35, Setup=0.00, Trend=0.50, Perf=0.50, Vol=1.50
+2025-04-13 15:55:50,098 - TradingBot - INFO -   CS.D.USDCAD.MINI.IP: Score=0.30, Setup=0.00, Trend=0.50, Perf=0.50, Vol=1.00
+2025-04-13 15:55:50,098 - TradingBot - INFO -   CS.D.EURUSD.MINI.IP: Score=0.30, Setup=0.00, Trend=0.50, Perf=0.50, Vol=1.00
+2025-04-13 15:55:50,098 - TradingBot - INFO -   CS.D.EURGBP.MINI.IP: Score=0.25, Setup=0.00, Trend=0.50, Perf=0.50, Vol=0.50
+2025-04-13 15:55:50,827 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:50,828 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:51,607 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:51,610 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:52,437 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:52,439 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:53,303 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:53,305 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,106 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,108 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,211 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,213 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:54,234 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,236 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,238 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,239 - TradingBot - WARNING - No historical data for CS.D.GBPUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,241 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,243 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:54,245 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,246 - TradingBot - WARNING - No historical data for IX.D.FTSE.DAILY.IP, can't calculate technicals.
+2025-04-13 15:55:54,248 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,249 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,251 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,253 - TradingBot - WARNING - No historical data for CS.D.USDCAD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,254 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,256 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,258 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,260 - TradingBot - WARNING - No historical data for CS.D.EURUSD.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,260 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,260 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,261 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,263 - TradingBot - WARNING - No historical data for CS.D.EURGBP.MINI.IP, can't calculate technicals.
+2025-04-13 15:55:54,264 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,266 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,268 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,269 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,271 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,273 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,275 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,277 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,278 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,280 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,282 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,283 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,285 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,287 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,288 - TradingBot - ERROR - Polygon client not available.
+2025-04-13 15:55:54,293 - TradingBot - ERROR - Prompt template 'llm_prompts\advanced_trade_analysis.txt' not found.
+2025-04-13 15:55:54,295 - TradingBot - ERROR - Missing key in prompt template: \n          "tradeActions"
+2025-04-13 15:55:54,296 - TradingBot - CRITICAL - Unhandled exception in main loop!
+Traceback (most recent call last):
+  File "C:\temp\claude\git\advanced_llm_prompting.py", line 425, in generate_advanced_prompt
+    prompt = template.format(**context_data)
+KeyError: '\n          "tradeActions"'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\temp\claude\git\main.py", line 343, in run_trading_bot
+    advanced_prompt, market_regime = llm_prompting.generate_advanced_prompt(
+                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        portfolio, valid_snapshots, data_provider, risk_manager
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\temp\claude\git\advanced_llm_prompting.py", line 430, in generate_advanced_prompt
+    prompt = self._generate_generic_template().format(**context_data)
+KeyError: '\n          "tradeActions"'
+2025-04-13 15:55:54,324 - TradingBot - ERROR - Error: '\n          "tradeActions"'
+2025-04-13 15:55:54,325 - TradingBot - ERROR - Pausing 30s before retry.
+2025-04-13 15:56:24,327 - TradingBot - INFO - Cycle ended (Duration: 34.53s). Sleeping 145.47s...
