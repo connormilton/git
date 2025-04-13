@@ -419,6 +419,10 @@ class TradeMemory:
             if gross_loss is None:
                 gross_loss = 0.0
             
+            # Ensure we're working with numeric values
+            gross_profit = float(gross_profit)
+            gross_loss = float(gross_loss)
+            
             if gross_loss > 0:
                 profit_factor = gross_profit / gross_loss
                 return profit_factor
