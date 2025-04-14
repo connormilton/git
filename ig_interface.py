@@ -408,25 +408,89 @@ class IGInterface:
             limit_float = float(trade_details['limit_level']) if trade_details.get('limit_level') else None
             epic = trade_details['epic']
             direction = trade_details['direction']
-
             logger.info(f"Executing {direction} {size_float:.2f} {epic} | Stop: {stop_float} Limit: {limit_float}")
+            
+            # Calculate stop and limit distance instead of absolute levels
+            # Get current price
+            snapshot = self.fetch_market_snapshot(epic)
+            if not snapshot or snapshot.get('bid') is None:
+                return {'status': 'FAILURE', 'reason': 'Cannot get current price for stop/limit distance calculation'}
+                
+            # Use bid/offer depending on direction
+            current_price = snapshot.get('offer') if direction == 'BUY' else snapshot.get('bid')
+            
+            # Convert to float to avoid decimal/float type issues
+            current_price_float = float(current_price)
+            
+            # Calculate distances
+            stop_distance = None
+            limit_distance = None
+            
+            if stop_float is not None:
+                if direction == 'BUY':
+                    stop_distance = current_price_float - stop_float
+                else:  # SELL
+                    stop_distance = stop_float - current_price_float
+                    
+            if limit_float is not None:
+                if direction == 'BUY':
+                    limit_distance = limit_float - current_price_float
+                else:  # SELL
+                    limit_distance = current_price_float - limit_float
+            
+            # Make sure distances are positive
+            if stop_distance is not None and stop_distance <= 0:
+                logger.warning(f"Calculated negative stop distance. Using minimum 5.0 instead.")
+                stop_distance = 5.0
+            
+            if limit_distance is not None and limit_distance <= 0:
+                logger.warning(f"Calculated negative limit distance. Using minimum 5.0 instead.")
+                limit_distance = 5.0
+            
+            # Convert distances back to absolute levels for the API
+            # The API requires limit_level and stop_level, not distances
+            stop_level = None
+            limit_level = None
+            
+            if stop_distance is not None:
+                if direction == 'BUY':
+                    stop_level = current_price_float - stop_distance
+                else:  # SELL
+                    stop_level = current_price_float + stop_distance
+                    
+            if limit_distance is not None:
+                if direction == 'BUY':
+                    limit_level = current_price_float + limit_distance
+                else:  # SELL
+                    limit_level = current_price_float - limit_distance
+            
+            logger.info(f"Converted to absolute levels - Stop: {stop_level}, Limit: {limit_level}")
+            
+            # Use the updated create_open_position function with ALL required parameters
             resp = self.ig_service.create_open_position(
                 epic=epic,
                 direction=direction,
                 size=size_float,
                 order_type='MARKET',
+                limit_level=limit_level,
+                stop_level=stop_level,
                 expiry='DFB',
+                guaranteed_stop=False,
                 currency_code=self.config['ACCOUNT_CURRENCY'],
                 force_open=True,
-                guaranteed_stop=False,
-                stop_level=stop_float,
-                limit_level=limit_float
+                # Additional required parameters based on the error message
+                level=None,  # No specific level for market orders
+                limit_distance=None,  # Using limit_level instead
+                quote_id=None,  # Not using specific quotes
+                stop_distance=None,  # Using stop_level instead
+                trailing_stop=False,
+                trailing_stop_increment=None
             )
+            
             deal_ref = resp.get('dealReference', 'N/A')
             ig_status = resp.get('dealStatus', 'UNKNOWN')
             reason = resp.get('reason', 'N/A')
             deal_id = resp.get('dealId')
-
             if ig_status == 'ACCEPTED' and deal_id:
                 return {'status': 'SUCCESS', 'dealId': deal_id, 'reason': reason}
             else:
@@ -440,7 +504,7 @@ class IGInterface:
             logger.error(f"Error executing trade {trade_details.get('epic')}: {e}", exc_info=True)
             return {'status': 'ERROR', 'reason': str(e)}
 
-    def close_trade(self, deal_id, size, direction):
+    def close_trade(self, deal_id, size, direction, epic="Unknown"):
         if not self.ig_service:
             return {'status': 'FAILURE', 'reason': 'Not connected'}
         try:
@@ -469,7 +533,7 @@ class IGInterface:
             logger.error(f"Error closing trade {deal_id}: {e}", exc_info=True)
             return {'status': 'ERROR', 'reason': str(e)}
 
-    def amend_trade(self, deal_id, stop_level=None, limit_level=None):
+    def amend_trade(self, deal_id, stop_level=None, limit_level=None, epic="Unknown"):
         if not self.ig_service:
             return {'status': 'FAILURE', 'reason': 'Not connected'}
         if stop_level is None and limit_level is None:
