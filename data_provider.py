@@ -1,4 +1,4 @@
-# data_provider.py - Fixed version
+# data_provider.py - Fixed version to handle Polygon API changes
 
 import logging
 import decimal
@@ -27,9 +27,7 @@ except ImportError:
     NoResultsError = Exception
     BadResponse = Exception
     POLYGON_CLIENT_AVAILABLE = False
-    logging.getLogger("DataProvider").warning(
-        "Polygon library is not available, install with: pip install polygon-api-client"
-    )
+    logging.getLogger("DataProvider").warning("Polygon library is not available, install with: pip install polygon-api-client")
 
 logger = logging.getLogger("TradingBot")
 
@@ -55,7 +53,7 @@ class DataProvider:
         else:
             try:
                 logger.info(f"Initializing Polygon client with key starting with: {self.polygon_api_key[:4]}...")
-                # FIXED: Removed timeout parameter
+                # Removed timeout parameter to avoid unexpected keyword argument error
                 self.polygon_client = RESTClient(self.polygon_api_key)
                 logger.info("Polygon.io client initialized successfully")
                 
@@ -74,7 +72,6 @@ class DataProvider:
         try:
             # Try getting ticker details for a common forex pair
             ticker = "C:EURUSD"
-            # Use a simpler call to test connection - use ticker details instead of historical data
             ticker_details = self.polygon_client.get_ticker_details(ticker=ticker)
             logger.info(f"Polygon connection test successful. Got details for {ticker}: {ticker_details.name}")
             return True
@@ -134,20 +131,15 @@ class DataProvider:
         # Make sure we're using valid historical dates, not future dates
         current_dt = datetime.now(timezone.utc)
         if end_dt > current_dt:
-            logger.warning(
-                f"Adjusted end_dt from {end_dt} to current time {current_dt} (future dates have no data)"
-            )
+            logger.warning(f"Adjusted end_dt from {end_dt} to current time {current_dt} (future dates have no data)")
             end_dt = current_dt
             
         start_dt = end_dt - timedelta(days=days_history)
-        # Use date strings for the Polygon API
-        end_date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-        start_date_str = (datetime.now(timezone.utc) - timedelta(days=days_history)).strftime('%Y-%m-%d')
+        end_date_str = end_dt.strftime('%Y-%m-%d')
+        start_date_str = start_dt.strftime('%Y-%m-%d')
 
-        logger.info(
-            f"Fetching Polygon history: {polygon_ticker} ({epic}) "
-            f"[{start_date_str} to {end_date_str}], TF: {timeframe}"
-        )
+        logger.info(f"Fetching Polygon history: {polygon_ticker} ({epic}) "
+                    f"[{start_date_str} to {end_date_str}], TF: {timeframe}")
         try:
             multiplier = 1
             timespan = timeframe.lower()
@@ -170,60 +162,40 @@ class DataProvider:
 
             # Convert to DataFrame
             df = pd.DataFrame(aggs)
-
-            # ------------------------------------------------------
-            # KEY FIX: Rename both uppercase & lowercase columns
-            # ------------------------------------------------------
             df = df.rename(columns={
-                'o': 'Open', 'h': 'High',  'l': 'Low',  'c': 'Close', 'v': 'Volume', 't': 'Timestamp',
-                'O': 'Open', 'H': 'High',  'L': 'Low',  'C': 'Close', 'V': 'Volume', 'T': 'Timestamp'
+                'o': 'Open',
+                'h': 'High',
+                'l': 'Low',
+                'c': 'Close',
+                'v': 'Volume',
+                't': 'Timestamp'
             })
-            
-            # Check if 't' or 'T' was actually present
-            if 't' in df.columns or 'T' in df.columns:
-                # If we successfully renamed it to 'Timestamp', parse it
-                if 'Timestamp' in df.columns:
-                    df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
-            elif 'Timestamp' in df.columns:
-                # If the aggregator returned 'Timestamp' directly
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
-            else:
-                # Create a synthetic timestamp if nothing is found
-                logger.warning(f"No timestamp column found for {polygon_ticker}, creating synthetic timestamps")
-                dates = pd.date_range(start=start_dt, end=end_dt, periods=len(df))
-                df['Timestamp'] = dates
-                
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
             df = df.set_index('Timestamp')
 
-            # Convert price data to Decimal for precision (if columns exist)
             for col in ['Open', 'High', 'Low', 'Close']:
                 if col in df.columns:
-                    df[col] = df[col].apply(
-                        lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA
-                    )
+                    df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
 
             if 'Volume' in df.columns:
-                df['Volume'] = df['Volume'].apply(
-                    lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0')
-                )
+                df['Volume'] = df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
 
-            # Filter to the requested date range 
             start_dt_aware = pd.Timestamp(start_dt.replace(tzinfo=timezone.utc))
             end_dt_aware = pd.Timestamp(end_dt.replace(tzinfo=timezone.utc))
             df = df[(df.index >= start_dt_aware) & (df.index <= end_dt_aware)]
 
             logger.info(f"Fetched {len(df)} bars for {polygon_ticker} ({epic}) from Polygon.")
-            if df.empty:
-                logger.warning(f"DataFrame is empty after date filtering for {polygon_ticker}")
             
+            # Log first/last data points for debugging
+            if not df.empty:
+                logger.debug(f"First data point: {df.iloc[0].to_dict()}")
+                logger.debug(f"Last data point: {df.iloc[-1].to_dict()}")
+                
             return df
-            
         except Exception as e:
+            # Use more generic error handling instead of specific exceptions
             logger.error(f"Polygon fetch error for {polygon_ticker}: {e}")
-            logger.debug(f"Error details for {polygon_ticker}: {type(e).__name__}", exc_info=True)
-            # Create a minimal empty dataframe with correct structure
-            df = pd.DataFrame(columns=['Open', 'High', 'Low', 'Close', 'Volume'])
-            return df
+            return pd.DataFrame()
 
     def apply_technical_indicators(self, df):
         """Calculate and add technical indicators to the dataframe."""
@@ -268,6 +240,7 @@ class DataProvider:
             df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
         else:
             df['MACD_Signal'] = df['MACD']
+            
         df['MACD_Hist'] = df['MACD'] - df['MACD_Signal']
 
         # Relative Strength Index (RSI)
@@ -288,41 +261,47 @@ class DataProvider:
             df['BB_StdDev'] = df['Close'].rolling(window=20).std()
             df['BB_Upper'] = df['BB_Middle'] + (df['BB_StdDev'] * 2)
             df['BB_Lower'] = df['BB_Middle'] - (df['BB_StdDev'] * 2)
+            
             # Bollinger Band Width
             df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / df['BB_Middle']
         else:
             df['BB_Middle'] = df['Close']
             df['BB_StdDev'] = 0
             df['BB_Upper'] = df['Close'] * 1.02  # Approximate 2% band
-            df['BB_Lower'] = df['Close'] * 0.98
-            df['BB_Width'] = 0.04
+            df['BB_Lower'] = df['Close'] * 0.98  # Approximate 2% band
+            df['BB_Width'] = 0.04  # Placeholder for short data sets
 
         # Average True Range (ATR)
-        if len(df) >= 2:  # Need at least 2 rows
+        if len(df) >= 2:  # Need at least 2 rows for ATR
             tr1 = abs(df['High'] - df['Low'])
             tr2 = abs(df['High'] - df['Close'].shift())
             tr3 = abs(df['Low'] - df['Close'].shift())
             tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            
             if len(df) >= 14:
                 df['ATR_14'] = tr.rolling(window=14).mean()
             else:
                 df['ATR_14'] = tr.mean()
         else:
+            # For single row, use a placeholder based on High-Low range
             df['ATR_14'] = (df['High'] - df['Low']) * 0.5
 
         # Stochastic Oscillator
         if len(df) >= 14:
             low_14 = df['Low'].rolling(window=14).min()
             high_14 = df['High'].rolling(window=14).max()
+            # Avoid division by zero
             stoch_k_denom = high_14 - low_14
             stoch_k_denom = stoch_k_denom.replace(0, np.nan)
             stoch_k = 100 * ((df['Close'] - low_14) / stoch_k_denom)
             df['Stoch_K'] = stoch_k.fillna(50)
+            
             if len(df) >= 3:
                 df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
             else:
                 df['Stoch_D'] = df['Stoch_K']
         else:
+            # Placeholder values for short data sets
             df['Stoch_K'] = 50
             df['Stoch_D'] = 50
 
@@ -337,46 +316,58 @@ class DataProvider:
 
         # Simple trend identification
         df['Trend'] = 0  # 0 = no trend, 1 = uptrend, -1 = downtrend
+        
+        # Set trend based on available MAs
         if len(df) >= 50:
             df.loc[(df['SMA_20'] > df['SMA_50']), 'Trend'] = 1
             df.loc[(df['SMA_20'] < df['SMA_50']), 'Trend'] = -1
         elif len(df) >= 20:
+            # For shorter datasets, compare current price to SMA
             df.loc[(df['Close'] > df['SMA_20']), 'Trend'] = 1
             df.loc[(df['Close'] < df['SMA_20']), 'Trend'] = -1
         else:
+            # For very short datasets, compare to previous value if available
             if len(df) > 1:
                 df['Trend'] = np.sign(df['Close'].diff())
             else:
-                df['Trend'] = 0
+                df['Trend'] = 0  # No trend for single point
 
         # ADX (Simplified calculation for short datasets)
         if len(df) >= 14:
+            # Simplified ADX for short datasets
             plus_dm = df['High'].diff()
             minus_dm = df['Low'].diff()
             plus_dm = plus_dm.where(plus_dm > 0, 0)
             minus_dm = minus_dm.where(minus_dm < 0, 0).abs()
+            
             atr = df['ATR_14']
+            
+            # Calculate DI+ and DI-
             plus_di = 100 * plus_dm.rolling(window=14).mean() / atr.replace(0, np.nan)
             minus_di = 100 * minus_dm.rolling(window=14).mean() / atr.replace(0, np.nan)
+            
+            # Fill NaN values
             plus_di = plus_di.fillna(0)
             minus_di = minus_di.fillna(0)
+            
+            # Calculate DX and ADX
             di_sum = plus_di + minus_di
             di_diff = abs(plus_di - minus_di)
             dx = 100 * (di_diff / di_sum.replace(0, np.nan)).fillna(0)
             df['ADX'] = dx.ewm(span=14, adjust=False).mean()
+            
             df['Plus_DI'] = plus_di
             df['Minus_DI'] = minus_di
         else:
-            df['ADX'] = 15
+            # Placeholder values for short datasets
+            df['ADX'] = 15  # Low ADX value indicating weak trend
             df['Plus_DI'] = 25
             df['Minus_DI'] = 25
 
         # Convert indicators back to Decimal for consistency
         for col in df.columns:
             if col not in ['Open', 'High', 'Low', 'Close', 'Volume', 'Timestamp']:
-                df[col] = df[col].apply(
-                    lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA
-                )
+                df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
 
         return df
 
@@ -405,233 +396,217 @@ class DataProvider:
 
     def get_latest_technicals(self, epic):
         """Get the latest technical indicators for an instrument."""
-        try:
-            tech_df = self.get_technical_data(epic)
-            if tech_df.empty:
-                logger.warning(f"No historical data for {epic}, returning empty technicals.")
-                return {}
+        tech_df = self.get_technical_data(epic)
+        if tech_df.empty:
+            return {}
 
-            # Get the most recent row of data (latest technical values)
-            latest = tech_df.iloc[-1].to_dict()
-            technicals = {}
-            
-            # Format decimal values and filter relevant indicators
-            for key, value in latest.items():
-                # Skip OHLCV data and only include calculated indicators
-                if key not in ['Open', 'High', 'Low', 'Close', 'Volume'] and pd.notna(value):
-                    if isinstance(value, decimal.Decimal):
-                        technicals[key] = float(value)
-                    else:
-                        technicals[key] = value
-            
-            return technicals
-        except Exception as e:
-            logger.error(f"Error getting technicals for {epic}: {e}")
-            return {}  # Return empty dict on error
+        # Get the most recent row of data (latest technical values)
+        latest = tech_df.iloc[-1].to_dict()
+        technicals = {}
+        
+        # Format decimal values and filter relevant indicators
+        for key, value in latest.items():
+            # Skip OHLCV data and include only calculated indicators
+            if key not in ['Open', 'High', 'Low', 'Close', 'Volume'] and pd.notna(value):
+                if isinstance(value, decimal.Decimal):
+                    technicals[key] = float(value)
+                else:
+                    technicals[key] = value
+        
+        return technicals
 
     def get_market_regime(self, epic):
         """Determine the current market regime (trending, ranging, volatile)."""
-        try:
-            tech_df = self.get_technical_data(epic)
-            if tech_df.empty:
-                return "unknown"
-                
-            # Get the latest values
-            latest = tech_df.iloc[-1]
-            
-            # Check for high volatility
-            volatility = latest.get('Volatility_20', 0)
-            if isinstance(volatility, decimal.Decimal):
-                volatility = float(volatility)
-                
-            if volatility > 1.5:  # 1.5% average daily range is considered volatile
-                regime = "volatile"
-            # Check for trending market
-            elif float(latest.get('ADX', 0)) > 25:  # ADX > 25 indicates a trend
-                if float(latest.get('Trend', 0)) > 0:
-                    regime = "uptrend"
-                else:
-                    regime = "downtrend"
-            # Otherwise ranging/sideways
-            else:
-                regime = "ranging"
-                
-            return regime
-        except Exception as e:
-            logger.error(f"Error determining market regime for {epic}: {e}")
+        tech_df = self.get_technical_data(epic)
+        if tech_df.empty:
             return "unknown"
+            
+        # Get the latest values
+        latest = tech_df.iloc[-1]
+        
+        # Check for high volatility
+        volatility = latest.get('Volatility_20', 0)
+        if isinstance(volatility, decimal.Decimal):
+            volatility = float(volatility)
+            
+        if volatility > 1.5:  # 1.5% average daily range is considered volatile
+            regime = "volatile"
+        # Check for trending market
+        elif float(latest.get('ADX', 0)) > 25:  # ADX > 25 indicates a trend
+            if float(latest.get('Trend', 0)) > 0:
+                regime = "uptrend"
+            else:
+                regime = "downtrend"
+        # Otherwise ranging/sideways
+        else:
+            regime = "ranging"
+            
+        return regime
 
     def get_multi_timeframe_analysis(self, epic):
         """Analyze multiple timeframes for consistent signals."""
-        try:
-            timeframes = [
-                {"name": "daily", "days": 90, "timeframe": "day"},
-                {"name": "hourly", "days": 14, "timeframe": "hour"},
-                {"name": "minute", "days": 2, "timeframe": "minute"}
-            ]
-            
-            results = {}
-            for tf in timeframes:
-                df = self.get_historical_data_polygon(
-                    epic, 
-                    days_history=tf["days"],
-                    timeframe=tf["timeframe"]
-                )
-                if not df.empty:
-                    tech_df = self.apply_technical_indicators(df)
-                    if not tech_df.empty:
-                        latest = tech_df.iloc[-1]
+        timeframes = [
+            {"name": "daily", "days": 90, "timeframe": "day"},
+            {"name": "hourly", "days": 14, "timeframe": "hour"},
+            {"name": "minute", "days": 2, "timeframe": "minute"}
+        ]
+        
+        results = {}
+        for tf in timeframes:
+            df = self.get_historical_data_polygon(
+                epic, 
+                days_history=tf["days"],
+                timeframe=tf["timeframe"]
+            )
+            if not df.empty:
+                tech_df = self.apply_technical_indicators(df)
+                if not tech_df.empty:
+                    latest = tech_df.iloc[-1]
+                    
+                    # Determine trend
+                    trend = "neutral"
+                    trend_val = latest.get('Trend', 0)
+                    if isinstance(trend_val, decimal.Decimal):
+                        trend_val = float(trend_val)
                         
-                        # Determine trend
-                        trend = "neutral"
-                        trend_val = latest.get('Trend', 0)
-                        if isinstance(trend_val, decimal.Decimal):
-                            trend_val = float(trend_val)
-                            
-                        if trend_val > 0:
-                            trend = "bullish"
-                        elif trend_val < 0:
-                            trend = "bearish"
-                            
-                        # Determine momentum
-                        momentum = "neutral"
-                        rsi = latest.get('RSI', 50)
-                        if isinstance(rsi, decimal.Decimal):
-                            rsi = float(rsi)
-                            
-                        if rsi > 60:
-                            momentum = "bullish"
-                        elif rsi < 40:
-                            momentum = "bearish"
+                    if trend_val > 0:
+                        trend = "bullish"
+                    elif trend_val < 0:
+                        trend = "bearish"
                         
-                        # Determine volatility
-                        volatility = "normal"
-                        vol_val = latest.get('Volatility_20', 1)
-                        if isinstance(vol_val, decimal.Decimal):
-                            vol_val = float(vol_val)
-                            
-                        if vol_val > 1.5:
-                            volatility = "high"
-                        elif vol_val < 0.5:
-                            volatility = "low"
+                    # Determine momentum
+                    momentum = "neutral"
+                    rsi = latest.get('RSI', 50)
+                    if isinstance(rsi, decimal.Decimal):
+                        rsi = float(rsi)
                         
-                        # Get BB width for analysis
-                        bb_width = 0
-                        if 'BB_Width' in tech_df.columns:
-                            bb_width_val = latest.get('BB_Width', 0)
-                            if isinstance(bb_width_val, decimal.Decimal):
-                                bb_width = float(bb_width_val) * 100
-                        else:
-                            # Calculate if not present
-                            bb_upper = latest.get('BB_Upper', 0)
-                            bb_lower = latest.get('BB_Lower', 0)
-                            bb_middle = latest.get('BB_Middle', 1)
-                            if all(isinstance(x, decimal.Decimal) for x in [bb_upper, bb_lower, bb_middle]) \
-                               and bb_middle > 0:
-                                bb_width = float((bb_upper - bb_lower) / bb_middle) * 100
+                    if rsi > 60:
+                        momentum = "bullish"
+                    elif rsi < 40:
+                        momentum = "bearish"
+                    
+                    # Determine volatility
+                    volatility = "normal"
+                    vol_val = latest.get('Volatility_20', 1)
+                    if isinstance(vol_val, decimal.Decimal):
+                        vol_val = float(vol_val)
                         
-                        # Get ADX for trend strength
-                        adx = latest.get('ADX', 0)
-                        if isinstance(adx, decimal.Decimal):
-                            adx = float(adx)
+                    if vol_val > 1.5:
+                        volatility = "high"
+                    elif vol_val < 0.5:
+                        volatility = "low"
+                    
+                    # Get BB width for analysis
+                    bb_width = 0
+                    if 'BB_Width' in tech_df.columns:
+                        bb_width_val = latest.get('BB_Width', 0)
+                        if isinstance(bb_width_val, decimal.Decimal):
+                            bb_width = float(bb_width_val) * 100
+                    else:
+                        # Calculate if not present
+                        bb_upper = latest.get('BB_Upper', 0)
+                        bb_lower = latest.get('BB_Lower', 0)
+                        bb_middle = latest.get('BB_Middle', 1)
                         
-                        results[tf["name"]] = {
-                            "trend": trend,
-                            "momentum": momentum,
-                            "volatility": volatility,
-                            "rsi": float(rsi),
-                            "adx": adx,
-                            "bb_width": bb_width
-                        }
-            
-            return results
-        except Exception as e:
-            logger.error(f"Error in multi-timeframe analysis for {epic}: {e}")
-            return {}
+                        if all(isinstance(x, decimal.Decimal) for x in [bb_upper, bb_lower, bb_middle]) and bb_middle > 0:
+                            bb_width = float((bb_upper - bb_lower) / bb_middle) * 100
+                    
+                    # Get ADX for trend strength
+                    adx = latest.get('ADX', 0)
+                    if isinstance(adx, decimal.Decimal):
+                        adx = float(adx)
+                    
+                    results[tf["name"]] = {
+                        "trend": trend,
+                        "momentum": momentum,
+                        "volatility": volatility,
+                        "rsi": float(rsi),
+                        "adx": adx,
+                        "bb_width": bb_width
+                    }
+        
+        return results
 
     def get_correlation_matrix(self, epics):
         """Calculate correlation matrix between multiple instruments."""
-        try:
-            if not epics or len(epics) < 2:
-                return {}
-                
-            # Fetch close prices for all epics
-            price_data = {}
-            for epic in epics:
-                df = self.get_historical_data_polygon(epic, days_history=30)
-                if not df.empty and 'Close' in df.columns:
-                    price_data[epic] = df['Close'].astype(float)
+        if not epics or len(epics) < 2:
+            return {}
             
-            # If we have at least 2 instruments with data
-            if len(price_data) >= 2:
-                # Create a DataFrame with all close prices
-                price_df = pd.DataFrame(price_data)
-                # Handle any NaN values 
-                price_df = price_df.fillna(method='ffill').fillna(method='bfill')
-                # Calculate correlation matrix
-                corr_matrix = price_df.corr().round(2).to_dict()
-                return corr_matrix
-            else:
-                return {}
-        except Exception as e:
-            logger.error(f"Error calculating correlation matrix: {e}")
+        # Fetch close prices for all epics
+        price_data = {}
+        for epic in epics:
+            df = self.get_historical_data_polygon(epic, days_history=30)
+            if not df.empty:
+                price_data[epic] = df['Close'].astype(float)
+        
+        # If we have at least 2 instruments with data
+        if len(price_data) >= 2:
+            # Create a DataFrame with all close prices
+            price_df = pd.DataFrame(price_data)
+            
+            # Handle any NaN values 
+            price_df = price_df.fillna(method='ffill').fillna(method='bfill')
+            
+            # Calculate correlation matrix
+            corr_matrix = price_df.corr().round(2).to_dict()
+            return corr_matrix
+        else:
             return {}
 
     def get_snapshot_with_technicals(self, epics):
         """Get market snapshots with technical indicators for multiple instruments."""
-        try:
-            if not isinstance(epics, list):
-                epics = [epics]
-                
-            results = {}
-            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                # Create futures for each epic
-                future_to_epic = {
-                    executor.submit(self.get_technical_data, epic): epic
-                    for epic in epics
-                }
-                
-                for future in concurrent.futures.as_completed(future_to_epic):
-                    epic = future_to_epic[future]
-                    try:
-                        tech_df = future.result()
-                        if not tech_df.empty:
-                            # Get the most recent data point
-                            latest = tech_df.iloc[-1].to_dict()
-                            snapshot = {
-                                'epic': epic,
-                                'price': {
-                                    'open': float(latest.get('Open', 0)),
-                                    'high': float(latest.get('High', 0)),
-                                    'low': float(latest.get('Low', 0)),
-                                    'close': float(latest.get('Close', 0)),
-                                    'volume': float(latest.get('Volume', 0))
-                                },
-                                'indicators': {
-                                    'trend': int(latest.get('Trend', 0)),
-                                    'rsi': float(latest.get('RSI', 50)),
-                                    'macd': float(latest.get('MACD', 0)),
-                                    'macd_signal': float(latest.get('MACD_Signal', 0)),
-                                    'adx': float(latest.get('ADX', 0)),
-                                    'bb_upper': float(latest.get('BB_Upper', 0)),
-                                    'bb_middle': float(latest.get('BB_Middle', 0)),
-                                    'bb_lower': float(latest.get('BB_Lower', 0)),
-                                    'atr': float(latest.get('ATR_14', 0)),
-                                    'stoch_k': float(latest.get('Stoch_K', 0)),
-                                    'stoch_d': float(latest.get('Stoch_D', 0)),
-                                    'volatility': float(latest.get('Volatility_20', 0))
-                                },
-                                'regime': self.get_market_regime(epic),
-                                'timestamp': datetime.now(timezone.utc).isoformat()
-                            }
-                            results[epic] = snapshot
-                    except Exception as e:
-                        logger.error(f"Error getting technicals for {epic}: {e}")
+        if not isinstance(epics, list):
+            epics = [epics]
             
-            return results
-        except Exception as e:
-            logger.error(f"Error in get_snapshot_with_technicals: {e}")
-            return {}
+        results = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            # Create futures for each epic
+            future_to_epic = {
+                executor.submit(self.get_technical_data, epic): epic
+                for epic in epics
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_epic):
+                epic = future_to_epic[future]
+                try:
+                    tech_df = future.result()
+                    
+                    if not tech_df.empty:
+                        # Get the most recent data point
+                        latest = tech_df.iloc[-1].to_dict()
+                        
+                        # Create a market snapshot with technicals
+                        snapshot = {
+                            'epic': epic,
+                            'price': {
+                                'open': float(latest.get('Open', 0)),
+                                'high': float(latest.get('High', 0)),
+                                'low': float(latest.get('Low', 0)),
+                                'close': float(latest.get('Close', 0)),
+                                'volume': float(latest.get('Volume', 0))
+                            },
+                            'indicators': {
+                                'trend': int(latest.get('Trend', 0)),
+                                'rsi': float(latest.get('RSI', 50)),
+                                'macd': float(latest.get('MACD', 0)),
+                                'macd_signal': float(latest.get('MACD_Signal', 0)),
+                                'adx': float(latest.get('ADX', 0)),
+                                'bb_upper': float(latest.get('BB_Upper', 0)),
+                                'bb_middle': float(latest.get('BB_Middle', 0)),
+                                'bb_lower': float(latest.get('BB_Lower', 0)),
+                                'atr': float(latest.get('ATR_14', 0)),
+                                'stoch_k': float(latest.get('Stoch_K', 0)),
+                                'stoch_d': float(latest.get('Stoch_D', 0)),
+                                'volatility': float(latest.get('Volatility_20', 0))
+                            },
+                            'regime': self.get_market_regime(epic),
+                            'timestamp': datetime.now(timezone.utc).isoformat()
+                        }
+                        results[epic] = snapshot
+                except Exception as e:
+                    logger.error(f"Error getting technicals for {epic}: {e}")
+        
+        return results
 
     def get_news_sentiment(self, epic):
         """Get news and basic sentiment for an instrument."""

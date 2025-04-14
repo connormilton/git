@@ -22,15 +22,15 @@ class AdvancedRiskManager:
         
         # Default Value Per Point mappings (used as fallback)
         self.APPROX_VPP_GBP = {
-            "CS.D.EURUSD.MINI.IP": decimal.Decimal("0.81"),
-            "CS.D.USDJPY.MINI.IP": decimal.Decimal("0.74"),
-            "CS.D.GBPUSD.MINI.IP": decimal.Decimal("0.81"),
-            "CS.D.AUDUSD.MINI.IP": decimal.Decimal("0.81"),
-            "CS.D.USDCAD.MINI.IP": decimal.Decimal("0.77"),
-            "CS.D.EURGBP.MINI.IP": decimal.Decimal("1.26"),
-            "CS.D.EURJPY.MINI.IP": decimal.Decimal("0.94"),
-            "CS.D.GBPJPY.MINI.IP": decimal.Decimal("0.94"),
-            "CS.D.AUDJPY.MINI.IP": decimal.Decimal("0.94"),
+            "CS.D.EURUSD.TODAY.IP": decimal.Decimal("0.81"),
+            "CS.D.USDJPY.TODAY.IP": decimal.Decimal("0.74"),
+            "CS.D.GBPUSD.TODAY.IP": decimal.Decimal("0.81"),
+            "CS.D.AUDUSD.TODAY.IP": decimal.Decimal("0.81"),
+            "CS.D.USDCAD.TODAY.IP": decimal.Decimal("0.77"),
+            "CS.D.EURGBP.TODAY.IP": decimal.Decimal("1.26"),
+            "CS.D.EURJPY.TODAY.IP": decimal.Decimal("0.94"),
+            "CS.D.GBPJPY.TODAY.IP": decimal.Decimal("0.94"),
+            "CS.D.AUDJPY.TODAY.IP": decimal.Decimal("0.94"),
         }
         
         # Risk parameters with defaults

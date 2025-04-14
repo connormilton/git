@@ -20,8 +20,6 @@ from portfolio import Portfolio
 from trade_executor import ExecutionHandler
 from decision_logger import DecisionLogger
 from trading_ig.rest import ApiExceededException
-# Import the margin validator
-from margin_validator import MarginValidator
 
 # Import error handling for process_llm_recommendations_with_logging
 try:
@@ -231,8 +229,8 @@ def process_llm_recommendations(recommendations, portfolio, risk_manager, data_p
     else:
         logger.info("No new LLM trade actions to process.")
 
-def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk_manager, portfolio, pair_selector, llm_prompting, llm_interface, decision_logger):
-    """Enhanced trading cycle with margin pre-validation."""
+def run_trading_cycle(config, broker, data_provider, trade_memory, risk_manager, portfolio, pair_selector, llm_prompting, llm_interface, decision_logger):
+    """Standard trading cycle without margin validation."""
     now = datetime.now(timezone.utc)
     logger.info(f"--- Trading Cycle {now.isoformat(timespec='seconds')} ---")
     
@@ -245,10 +243,7 @@ def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk
     print(f"💸 Available Margin: {portfolio.get_available_funds():.2f} {config['ACCOUNT_CURRENCY']}")
     print(f"⚠️ Current Risk Exposure: {risk_manager.total_open_risk_percent:.2f}% of balance\n")
     
-    # Initialize margin validator
-    margin_validator = MarginValidator(config, broker, portfolio)
-    
-    # 1. Select potential pairs to analyze (more than we'll eventually use)
+    # 1. Select potential pairs to analyze
     print("🔍 Selecting optimal trading pairs...")
     candidate_pairs = pair_selector.select_best_pairs(max_pairs=config.get('MAX_PAIRS_TO_ANALYZE', 10))
     if not candidate_pairs:
@@ -256,49 +251,15 @@ def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk
         print("⚠️ WARNING: No valid pairs selected for this cycle. Will try again next cycle.")
         return False
         
-    logger.info(f"Selected {len(candidate_pairs)} candidate pairs for margin check")
-    print(f"✅ Selected {len(candidate_pairs)} pairs for analysis")
+    logger.info(f"Selected {len(candidate_pairs)} candidate pairs")
+    print(f"✅ Selected {len(candidate_pairs)} pairs for analysis: {', '.join(candidate_pairs)}\n")
     
-    # MODIFIED: Skip margin validation and use all candidate pairs
-    print("💹 Bypassing margin requirements check...")
-    viable_pairs = []
-    for epic in candidate_pairs:
-        instrument_details = broker.get_instrument_details(epic)
-        min_deal_size = decimal.Decimal('0.01')  # Default
-        if instrument_details and 'minDealSize' in instrument_details:
-            min_deal_size = instrument_details['minDealSize']
-        
-        viable_pairs.append({
-            'epic': epic,
-            'viable': True,
-            'reason': "Margin check bypassed",
-            'min_deal_size': min_deal_size
-        })
-    
-    viable_epics = [pair['epic'] for pair in viable_pairs]
-    logger.info(f"Using all {len(viable_pairs)} candidate pairs: {viable_epics}")
-    print(f"✅ Using all {len(viable_pairs)} candidate pairs: {', '.join(viable_epics)}\n")
-    
-    # Use default risk parameters
-    adaptive_params = {
-        "adjusted_risk_percent": float(config.get('RISK_PER_TRADE_PERCENT', 2.0)),
-        "allow_higher_risk": False,
-        "focus_on_larger_stops": False,
-        "reason": "Margin checks bypassed"
-    }
-    logger.info(f"Using default risk parameters - margin checks bypassed")
-    
-    if adaptive_params.get('allow_higher_risk', False):
-        print(f"ℹ️ Adjusting risk parameters due to margin constraints: {adaptive_params['reason']}")
-        print(f"   - Risk per trade: {adaptive_params['adjusted_risk_percent']:.2f}% (from {config['RISK_PER_TRADE_PERCENT']:.2f}%)")
-    
-    # 4. Fetch market data for viable pairs only
+    # 2. Fetch market data for candidate pairs
     print("📊 Fetching market data and technical indicators...")
     market_snapshots = {}
     technical_data = {}
     
-    for pair_info in viable_pairs:
-        epic = pair_info['epic']
+    for epic in candidate_pairs:
         snapshot = broker.fetch_market_snapshot(epic)
         if snapshot:
             market_snapshots[epic] = snapshot
@@ -320,38 +281,23 @@ def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk
     if not valid_snapshots:
         logger.warning("No valid snapshots. Skipping LLM call.")
         print("⚠️ WARNING: No valid market data available. Skipping trading decisions.")
-        return {"tradeActions": [], "tradeAmendments": []}
+        return False
     
-    print(f"✅ Fetched market data for {len(valid_snapshots)} instruments")
+    print(f"✅ Fetched market data for {len(valid_snapshots)} instruments\n")
     
-    # 5. Update volatility adjustments for risk management
+    # 3. Update volatility adjustments for risk management
     risk_manager.update_volatility_adjustments(data_provider)
     
-    # 6. Generate LLM prompt with updated context
-    # Add margin information to the prompt context
+    # 4. Generate LLM prompt
     print("🧠 Generating advanced LLM analysis prompt...")
     advanced_prompt, market_regime = llm_prompting.generate_advanced_prompt(
-        portfolio, valid_snapshots, data_provider, risk_manager,
-        additional_context={
-            'VIABLE_PAIRS': viable_epics,
-            'MARGIN_CONSTRAINTS': True,
-            'ADAPTIVE_RISK': adaptive_params,
-            'MIN_POSITION_SIZES': {pair['epic']: float(pair['min_deal_size']) for pair in viable_pairs}
-        }
+        portfolio, valid_snapshots, data_provider, risk_manager
     )
     
-    # 7. Update the system prompt to include margin awareness
+    # 5. Generate system prompt 
     system_prompt = llm_prompting.generate_system_prompt(market_regime)
-    margin_awareness = """
-    Due to margin constraints, focus only on these viable instruments: {}.
-    {}
-    """.format(
-        ", ".join(viable_epics),
-        "The minimum position size requires higher risk per trade than usual." if adaptive_params.get('allow_higher_risk') else ""
-    )
-    system_prompt += margin_awareness
     
-    # 8. Get trade recommendations with the enhanced prompts
+    # 6. Get trade recommendations
     recommendations = llm_interface.get_trade_recommendations_with_prompt(
         system_prompt, advanced_prompt, market_regime
     )
@@ -367,8 +313,8 @@ def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk
         market_regime
     )
     
-    # Return the recommendations and additional information
-    return recommendations, viable_pairs, adaptive_params, current_decision_id
+    # Return the recommendations and decision ID
+    return recommendations, current_decision_id
 
 def run_trading_bot():
     logger.info(f"🚀 Initializing Enhanced Forex AI Trader PID: {os.getpid()}")
@@ -419,41 +365,26 @@ def run_trading_bot():
                 print("❌ ERROR: Account balance zero or negative. Stopping trading bot.")
                 break
 
-            # 2. Run the enhanced trading cycle with margin validation
-            results = enhanced_run_trading_cycle(
+            # 2. Run the trading cycle without margin validation
+            results = run_trading_cycle(
                 config, broker, data_provider, trade_memory, risk_manager, 
                 portfolio, pair_selector, llm_prompting, llm_interface, decision_logger
             )
             
             if results is False:
-                # No pairs were selected or no pairs passed margin check
+                # No pairs were selected
                 cycle_duration = time.time() - cycle_start_time
                 sleep_time = max(10, config.get('TRADING_CYCLE_SECONDS', 180) - cycle_duration)
-                logger.info(f"Cycle ended (No pairs passed validation). Sleeping {sleep_time:.2f}s...")
+                logger.info(f"Cycle ended (No pairs selected). Sleeping {sleep_time:.2f}s...")
                 print(f"\n⏱️ Cycle completed in {cycle_duration:.2f}s. Sleeping for {sleep_time:.2f}s until next cycle...")
                 print("="*100)
                 time.sleep(sleep_time)
                 continue
             
             # Unpack results
-            recommendations, viable_pairs, adaptive_params, current_decision_id = results
-            
-            # Filter recommendations to only include viable pairs
-            viable_epics = [pair['epic'] for pair in viable_pairs]
-            filtered_actions = [
-                action for action in recommendations.get('tradeActions', [])
-                if action.get('epic') in viable_epics
-            ]
-            
-            recommendations["tradeActions"] = filtered_actions
+            recommendations, current_decision_id = results
             
             # 3. Process LLM recommendations with decision tracking
-            if adaptive_params.get('allow_higher_risk', False):
-                # Temporarily modify risk settings
-                original_risk = risk_manager.base_risk_per_trade
-                risk_manager.base_risk_per_trade = decimal.Decimal(str(adaptive_params['adjusted_risk_percent']))
-                logger.info(f"Temporarily adjusted risk to {risk_manager.base_risk_per_trade}% for this cycle")
-            
             if current_decision_id:
                 process_llm_recommendations_with_logging(
                     recommendations,
@@ -475,14 +406,9 @@ def run_trading_bot():
                     executor
                 )
             
-            # Reset risk parameters if they were modified
-            if adaptive_params.get('allow_higher_risk', False):
-                risk_manager.base_risk_per_trade = original_risk
-                logger.info(f"Reset risk to {risk_manager.base_risk_per_trade}%")
-            
             # 4. Store market data for future analysis
             valid_snapshots = {
-                e: s for e, s in broker.fetch_market_snapshots(viable_epics).items() 
+                e: s for e, s in broker.fetch_market_snapshots(candidate_pairs).items() 
                 if s and s.get('bid') is not None
             }
             

@@ -50,16 +50,21 @@ def load_and_configure():
         # Strategy/Market
         "N_RECENT_TRADES_FEEDBACK": 5,
         "INITIAL_ASSET_FOCUS_EPICS": [
-            "CS.D.EURUSD.MINI.IP",
-            "CS.D.USDJPY.MINI.IP",
-            "CS.D.GBPUSD.MINI.IP",
-            "CS.D.AUDUSD.MINI.IP",
+            "CS.D.EURUSD.TODAY.IP",
+            "CS.D.USDJPY.TODAY.IP",
+            "CS.D.GBPUSD.TODAY.IP",
+            "CS.D.AUDUSD.TODAY.IP",
         ],
         "EPIC_TO_POLYGON_MAP": {
-            "CS.D.EURUSD.MINI.IP": "C:EURUSD",
-            "CS.D.USDJPY.MINI.IP": "C:USDJPY",
-            "CS.D.GBPUSD.MINI.IP": "C:GBPUSD",
-            "CS.D.AUDUSD.MINI.IP": "C:AUDUSD",
+            "CS.D.EURUSD.TODAY.IP": "C:EURUSD",
+            "CS.D.USDJPY.TODAY.IP": "C:USDJPY",
+            "CS.D.GBPUSD.TODAY.IP": "C:GBPUSD",
+            "CS.D.AUDUSD.TODAY.IP": "C:AUDUSD",
+            "CS.D.USDCAD.TODAY.IP": "C:USDCAD",
+            "CS.D.EURGBP.TODAY.IP": "C:EURGBP",
+            "CS.D.EURJPY.TODAY.IP": "C:EURJPY",
+            "CS.D.GBPJPY.TODAY.IP": "C:GBPJPY",
+            "CS.D.AUDJPY.TODAY.IP": "C:AUDJPY"
         },
         "HISTORICAL_DATA_TIMEFRAME": "hour",
         "HISTORICAL_DATA_PERIOD_DAYS": 30,
@@ -92,47 +97,47 @@ def load_and_configure():
         
         # Added forex pairs configuration
         "EXPANDED_FOREX_PAIRS": {
-            "CS.D.EURUSD.MINI.IP": {
+            "CS.D.EURUSD.TODAY.IP": {
                 "description": "Euro/US Dollar",
                 "category": "forex",
                 "group": "majors"
             },
-            "CS.D.USDJPY.MINI.IP": {
+            "CS.D.USDJPY.TODAY.IP": {
                 "description": "US Dollar/Japanese Yen",
                 "category": "forex",
                 "group": "majors"
             },
-            "CS.D.GBPUSD.MINI.IP": {
+            "CS.D.GBPUSD.TODAY.IP": {
                 "description": "British Pound/US Dollar",
                 "category": "forex",
                 "group": "majors"
             },
-            "CS.D.AUDUSD.MINI.IP": {
+            "CS.D.AUDUSD.TODAY.IP": {
                 "description": "Australian Dollar/US Dollar",
                 "category": "forex",
                 "group": "majors"
             },
-            "CS.D.USDCAD.MINI.IP": {
+            "CS.D.USDCAD.TODAY.IP": {
                 "description": "US Dollar/Canadian Dollar",
                 "category": "forex",
                 "group": "majors"
             },
-            "CS.D.EURGBP.MINI.IP": {
+            "CS.D.EURGBP.TODAY.IP": {
                 "description": "Euro/British Pound",
                 "category": "forex",
                 "group": "crosses"
             },
-            "CS.D.EURJPY.MINI.IP": {
+            "CS.D.EURJPY.TODAY.IP": {
                 "description": "Euro/Japanese Yen",
                 "category": "forex",
                 "group": "crosses"
             },
-            "CS.D.GBPJPY.MINI.IP": {
+            "CS.D.GBPJPY.TODAY.IP": {
                 "description": "British Pound/Japanese Yen",
                 "category": "forex",
                 "group": "crosses"
             },
-            "CS.D.AUDJPY.MINI.IP": {
+            "CS.D.AUDJPY.TODAY.IP": {
                 "description": "Australian Dollar/Japanese Yen",
                 "category": "forex",
                 "group": "crosses"
@@ -154,31 +159,33 @@ def load_and_configure():
             "ASIAN": {
                 "start_hour": 0,  # UTC
                 "end_hour": 8,    # UTC
-                "active_pairs": ["CS.D.USDJPY.MINI.IP", "CS.D.AUDJPY.MINI.IP", "CS.D.EURJPY.MINI.IP"]
+                "active_pairs": ["CS.D.USDJPY.TODAY.IP", "CS.D.AUDJPY.TODAY.IP", "CS.D.EURJPY.TODAY.IP", "CS.D.GBPJPY.TODAY.IP"]
             },
             "EUROPEAN": {
                 "start_hour": 7,  # UTC
                 "end_hour": 16,   # UTC
-                "active_pairs": ["CS.D.EURUSD.MINI.IP", "CS.D.GBPUSD.MINI.IP", "CS.D.EURGBP.MINI.IP", "IX.D.FTSE.DAILY.IP"]
+                "active_pairs": ["CS.D.EURUSD.TODAY.IP", "CS.D.GBPUSD.TODAY.IP", "CS.D.EURGBP.TODAY.IP", "IX.D.FTSE.DAILY.IP"]
             },
             "AMERICAN": {
                 "start_hour": 12, # UTC
                 "end_hour": 21,   # UTC
-                "active_pairs": ["CS.D.EURUSD.MINI.IP", "CS.D.GBPUSD.MINI.IP", "CS.D.USDCAD.MINI.IP"]
+                "active_pairs": ["CS.D.EURUSD.TODAY.IP", "CS.D.GBPUSD.TODAY.IP", "CS.D.USDCAD.TODAY.IP"]
             }
         },
 
         # Pair characteristics
         "PAIR_CHARACTERISTICS": {
-            "CS.D.EURUSD.MINI.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 10},
-            "CS.D.USDJPY.MINI.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 9.35},
-            "CS.D.GBPUSD.MINI.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
-            "CS.D.AUDUSD.MINI.IP": {"volatility": "high", "liquidity": "medium", "pip_value": 10},
-            "CS.D.USDCAD.MINI.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 7.7},
-            "CS.D.EURGBP.MINI.IP": {"volatility": "low", "liquidity": "medium", "pip_value": 12.6},
-            "CS.D.EURJPY.MINI.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 9.35},
+            "CS.D.EURUSD.TODAY.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 10},
+            "CS.D.USDJPY.TODAY.IP": {"volatility": "medium", "liquidity": "high", "pip_value": 9.35},
+            "CS.D.GBPUSD.TODAY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
+            "CS.D.AUDUSD.TODAY.IP": {"volatility": "high", "liquidity": "medium", "pip_value": 10},
+            "CS.D.USDCAD.TODAY.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 7.7},
+            "CS.D.EURGBP.TODAY.IP": {"volatility": "low", "liquidity": "medium", "pip_value": 12.6},
+            "CS.D.EURJPY.TODAY.IP": {"volatility": "medium", "liquidity": "medium", "pip_value": 9.35},
             "IX.D.FTSE.DAILY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
-            "CS.D.USCGC.TODAY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10}
+            "CS.D.USCGC.TODAY.IP": {"volatility": "high", "liquidity": "high", "pip_value": 10},
+            "CS.D.GBPJPY.TODAY.IP": {"volatility": "high", "liquidity": "medium", "pip_value": 9.35},
+            "CS.D.AUDJPY.TODAY.IP": {"volatility": "high", "liquidity": "medium", "pip_value": 9.35}
         },
     }
     CONFIG.update(DEFAULT_CONFIG)
