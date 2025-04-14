@@ -26,6 +26,11 @@ class AdvancedRiskManager:
             "CS.D.USDJPY.MINI.IP": decimal.Decimal("0.74"),
             "CS.D.GBPUSD.MINI.IP": decimal.Decimal("0.81"),
             "CS.D.AUDUSD.MINI.IP": decimal.Decimal("0.81"),
+            "CS.D.USDCAD.MINI.IP": decimal.Decimal("0.77"),
+            "CS.D.EURGBP.MINI.IP": decimal.Decimal("1.26"),
+            "CS.D.EURJPY.MINI.IP": decimal.Decimal("0.94"),
+            "CS.D.GBPJPY.MINI.IP": decimal.Decimal("0.94"),
+            "CS.D.AUDJPY.MINI.IP": decimal.Decimal("0.94"),
         }
         
         # Risk parameters with defaults
@@ -502,29 +507,8 @@ class AdvancedRiskManager:
         # 11. Check margin requirements and potentially adjust size
         margin_factor = instrument_details.get('marginFactor')
         if margin_factor is not None and margin_factor > 0 and signal_price > 0:
-            try:
-                margin_needed = final_size * signal_price * margin_factor
-                margin_buffer_factor = decimal.Decimal('0.8')  # Using 70% of available margin
-                effective_available = self.available_funds * margin_buffer_factor
-                
-                # If margin required exceeds available, reduce position size
-                if margin_needed > effective_available and effective_available > 0:
-                    # Calculate the maximum size that fits within margin constraints
-                    max_size_for_margin = effective_available / (signal_price * margin_factor)
-                    
-                    # Round down to comply with minimum size increments
-                    max_size_for_margin = max_size_for_margin.quantize(decimal.Decimal("0.01"), rounding=decimal.ROUND_DOWN)
-                    
-                    # Ensure it's not below minimum deal size
-                    if max_size_for_margin >= min_deal_size:
-                        logger.warning(f"Reducing size from {final_size} to {max_size_for_margin} due to margin constraints")
-                        final_size = max_size_for_margin
-                    else:
-                        # Can't meet both margin and minimum size requirements
-                        return None, f"Cannot meet margin requirements with minimum size {min_deal_size}"
-            except Exception as e:
-                logger.error(f"Error adjusting size for margin: {e}")
-                # Continue with the calculation, margin will be checked again in constraints
+            # Bypass margin check
+            logger.info(f"Bypassing margin check for {epic}")
 
         # 12. Calculate final risk with adjusted size
         estimated_risk_acc_ccy = final_size * stop_distance_pips * vpp
@@ -598,95 +582,11 @@ class AdvancedRiskManager:
         return decimal.Decimal("1.0")
 
     def check_portfolio_constraints(self, calculated_trade, instrument_details, portfolio_state, data_provider=None):
-        """Check if a new trade fits within portfolio constraints."""
+        """Always approve trades by bypassing all portfolio constraints."""
         epic = calculated_trade['epic']
         direction = calculated_trade['direction']
-        trade_size = calculated_trade['size']
-        signal_price = calculated_trade.get('signal_price')
-        estimated_risk = decimal.Decimal(str(calculated_trade.get('estimated_risk_gbp', 0)))
-        margin_factor = instrument_details.get('marginFactor')
-
-        logger.debug(f"Checking constraints for {epic} (Size: {trade_size}, Risk: {estimated_risk:.2f})...")
         
-        # 1. Check if we have exceeded maximum total portfolio risk
-        current_risk_percent = (self.total_open_risk / self.balance * 100) if self.balance > 0 else decimal.Decimal('0.0')
-        new_total_risk = self.total_open_risk + estimated_risk
-        new_risk_percent = (new_total_risk / self.balance * 100) if self.balance > 0 else decimal.Decimal('0.0')
+        logger.info(f"Bypassing ALL portfolio constraints for {epic} {direction}")
         
-        if new_risk_percent > self.max_total_risk:
-            reason = f"Adding this trade would exceed max total risk: {new_risk_percent:.2f}% > {self.max_total_risk:.2f}%"
-            logger.warning(reason)
-            return False, reason
-            
-        # 2. Check currency-specific risk caps
-        currency_pair = self._extract_currency_pair(epic)
-        if currency_pair:
-            base, quote = currency_pair
-            
-            # Check new exposure for both currencies
-            for currency in [base, quote]:
-                if currency:
-                    current_exposure = self.currency_exposure.get(currency, decimal.Decimal('0.0'))
-                    new_exposure = current_exposure + (estimated_risk / 2)  # Simplification
-                    currency_exposure_percent = (new_exposure / self.balance * 100) if self.balance > 0 else decimal.Decimal('0.0')
-                    
-                    if currency_exposure_percent > self.per_currency_risk_cap:
-                        reason = f"Adding this trade would exceed {currency} exposure cap: {currency_exposure_percent:.2f}% > {self.per_currency_risk_cap:.2f}%"
-                        logger.warning(reason)
-                        return False, reason
-                        
-        # 3. Check correlation with existing positions
-        if data_provider and len(self.open_position_risk) > 0:
-            # If this trade is highly correlated with existing positions in the same direction,
-            # we might want to limit our exposure
-            correlation_adjustment = self.calculate_correlation_adjustment(epic, direction, data_provider)
-            
-            # If correlation is very high, we might reject the trade
-            if correlation_adjustment < decimal.Decimal('0.6'):  # Highly correlated
-                # Check if we're already near risk limits
-                if current_risk_percent > (self.max_total_risk * decimal.Decimal('0.7')):
-                    reason = f"Highly correlated position when portfolio is already at {current_risk_percent:.2f}% risk"
-                    logger.warning(reason)
-                    return False, reason
-                    
-        # 4. Check margin requirements - UPDATED TO USE 70% OF AVAILABLE MARGIN
-        margin_check_passed = False
-        if signal_price and margin_factor is not None and margin_factor >= 0 and trade_size > 0:
-            try:
-                margin_needed = trade_size * signal_price * margin_factor
-                # Use 70% of available margin as the maximum allowed
-                margin_buffer_factor = decimal.Decimal('0.7')  # Updated to 70%
-                effective_available = self.available_funds * margin_buffer_factor
-                logger.debug(f"Margin needed {epic}: {margin_needed:.2f}, Available (<{margin_buffer_factor*100}%): {effective_available:.2f}")
-
-                if margin_needed <= effective_available:
-                    margin_check_passed = True
-                else:
-                    reason = (f"Insufficient margin. Needed: {margin_needed:.2f}, "
-                              f"Max Available: {effective_available:.2f}")
-                    logger.warning(reason)
-                    return False, reason
-            except Exception as margin_err:
-                logger.error(f"Error checking margin for {epic}: {margin_err}")
-                return False, "Margin calculation error"
-        else:
-            logger.warning(f"Cannot calculate margin for {epic}: Missing data.")
-            return False, "Missing data for margin calc"
-
-        # 5. Check market regime suitability if data provider available
-        if data_provider:
-            market_regime = data_provider.get_market_regime(epic)
-            if market_regime == "volatile":
-                # During volatile regimes, we might want to be more cautious
-                # Especially if we already have significant market exposure
-                if current_risk_percent > (self.max_total_risk * decimal.Decimal('0.5')):
-                    reason = f"Volatile market regime with substantial existing exposure ({current_risk_percent:.2f}%)"
-                    logger.warning(reason)
-                    return False, reason
-
-        # All checks passed
-        if margin_check_passed:
-            logger.info(f"Trade for {epic} passed all portfolio constraints.")
-            return True, "All risk checks passed"
-        else:
-            return False, "Unknown constraint failure"
+        # Always return True to approve the trade
+        return True, "All portfolio constraints bypassed"

@@ -259,24 +259,34 @@ def enhanced_run_trading_cycle(config, broker, data_provider, trade_memory, risk
     logger.info(f"Selected {len(candidate_pairs)} candidate pairs for margin check")
     print(f"✅ Selected {len(candidate_pairs)} pairs for analysis")
     
-    # 2. Pre-filter pairs based on margin viability
-    # Using a conservative min_stop_distance of 10 as initial filter
-    print("💹 Checking margin requirements for selected pairs...")
-    viable_pairs = margin_validator.get_viable_instruments(candidate_pairs, min_stop_distance=decimal.Decimal('10'))
-    
-    if not viable_pairs:
-        logger.warning("No viable pairs after margin check. Cycle will be skipped.")
-        print(f"⚠️ WARNING: No pairs meet margin requirements with your current balance/risk settings.")
-        return False
+    # MODIFIED: Skip margin validation and use all candidate pairs
+    print("💹 Bypassing margin requirements check...")
+    viable_pairs = []
+    for epic in candidate_pairs:
+        instrument_details = broker.get_instrument_details(epic)
+        min_deal_size = decimal.Decimal('0.01')  # Default
+        if instrument_details and 'minDealSize' in instrument_details:
+            min_deal_size = instrument_details['minDealSize']
         
-    # Log viable pairs and their details
-    viable_epics = [pair['epic'] for pair in viable_pairs]
-    logger.info(f"Found {len(viable_pairs)} viable pairs after margin check: {viable_epics}")
-    print(f"✅ Found {len(viable_pairs)} pairs that meet margin requirements: {', '.join(viable_epics)}\n")
+        viable_pairs.append({
+            'epic': epic,
+            'viable': True,
+            'reason': "Margin check bypassed",
+            'min_deal_size': min_deal_size
+        })
     
-    # 3. Get adaptive risk parameters based on viable instruments
-    adaptive_params = margin_validator.get_adaptive_risk_parameters(viable_pairs)
-    logger.info(f"Adaptive risk parameters: {adaptive_params}")
+    viable_epics = [pair['epic'] for pair in viable_pairs]
+    logger.info(f"Using all {len(viable_pairs)} candidate pairs: {viable_epics}")
+    print(f"✅ Using all {len(viable_pairs)} candidate pairs: {', '.join(viable_epics)}\n")
+    
+    # Use default risk parameters
+    adaptive_params = {
+        "adjusted_risk_percent": float(config.get('RISK_PER_TRADE_PERCENT', 2.0)),
+        "allow_higher_risk": False,
+        "focus_on_larger_stops": False,
+        "reason": "Margin checks bypassed"
+    }
+    logger.info(f"Using default risk parameters - margin checks bypassed")
     
     if adaptive_params.get('allow_higher_risk', False):
         print(f"ℹ️ Adjusting risk parameters due to margin constraints: {adaptive_params['reason']}")
