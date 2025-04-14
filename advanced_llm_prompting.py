@@ -312,7 +312,7 @@ class AdvancedLLMPrompting:
                 return float(o)
             return super().default(o)
         
-    def generate_advanced_prompt(self, portfolio, market_data, data_provider, risk_manager):
+    def generate_advanced_prompt(self, portfolio, market_data, data_provider, risk_manager, additional_context=None):
         """
         Generate an advanced, context-aware prompt for the LLM.
         This includes technical indicators, risk analysis, and market regime detection.
@@ -420,7 +420,48 @@ class AdvancedLLMPrompting:
             "MARKET_REGIMES_JSON": json.dumps(market_regimes, indent=2, cls=self.DecimalEncoder)
         }
         
-        # Try formatting the template
+        # Add the new margin context if provided
+        if additional_context:
+            # Format additional context with proper serialization
+            for key, value in additional_context.items():
+                # Special handling for nested dictionaries or complex objects
+                if isinstance(value, dict) or isinstance(value, list):
+                    context_data[key] = json.dumps(value, indent=2, cls=self.DecimalEncoder)
+                else:
+                    context_data[key] = value
+            
+            # Add special section for margin constraints if applicable
+            if additional_context.get('MARGIN_CONSTRAINED', False):
+                # Add information about minimum position sizes
+                min_sizes = additional_context.get('MIN_POSITION_SIZES', {})
+                viable_instruments = additional_context.get('VIABLE_INSTRUMENTS', [])
+                
+                # Create a margin constraints section to add to the prompt
+                margin_section = "\n## Margin Constraints\n"
+                margin_section += "Due to account margin requirements, only the following instruments are viable for trading in this cycle:\n"
+                margin_section += ", ".join(viable_instruments) + "\n\n"
+                
+                if min_sizes:
+                    margin_section += "Minimum position sizes:\n"
+                    for epic, size in min_sizes.items():
+                        margin_section += f"* {epic}: {size}\n"
+                        
+                # Add information about adaptive risk if applicable
+                adaptive_risk = additional_context.get('ADAPTIVE_RISK', {})
+                if adaptive_risk:
+                    margin_section += f"\nRisk per trade has been adjusted to {adaptive_risk.get('adjusted_risk_percent', 0):.2f}% "
+                    margin_section += f"due to: {adaptive_risk.get('reason', 'margin constraints')}\n"
+                    
+                # Add this section to the context
+                context_data["MARGIN_CONSTRAINTS_TEXT"] = margin_section
+                
+                # Update template to include margin section if not already present
+                if "MARGIN_CONSTRAINTS_TEXT" not in template:
+                    # Find a good location to insert - typically after account info section
+                    insertion_point = "## Current Market Data"
+                    if insertion_point in template:
+                        template = template.replace(insertion_point, "{MARGIN_CONSTRAINTS_TEXT}\n" + insertion_point)
+        
         try:
             prompt = template.format(**context_data)
         except KeyError as e:

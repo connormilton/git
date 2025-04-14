@@ -37,7 +37,7 @@ def load_and_configure():
     # -------------------------------------------------------------------------
     DEFAULT_CONFIG = {
         # Risk
-        "RISK_PER_TRADE_PERCENT": decimal.Decimal("2.0"),
+        "RISK_PER_TRADE_PERCENT": decimal.Decimal("3"),
         "MAX_TOTAL_RISK_PERCENT": decimal.Decimal("30.0"),
         "PER_CURRENCY_RISK_CAP": decimal.Decimal("15.0"),
         "MARGIN_BUFFER_FACTOR": decimal.Decimal("0.90"),
