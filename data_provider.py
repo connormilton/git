@@ -31,12 +31,19 @@ except ImportError:
 
 logger = logging.getLogger("TradingBot")
 
+
 class DataProvider:
     """Handles fetching and processing market data from Polygon.io."""
     def __init__(self, config):
         self.config = config
         self.polygon_api_key = config.get('POLYGON_API_KEY')
         self.polygon_client = None
+        
+        # Debug logging
+        logger.info(f"DataProvider initialization: POLYGON_CLIENT_AVAILABLE={POLYGON_CLIENT_AVAILABLE}")
+        logger.info(f"DataProvider initialization: API key present={bool(self.polygon_api_key)}")
+        if self.polygon_api_key:
+            logger.info(f"DataProvider initialization: API key starts with={self.polygon_api_key[:4]}")
         
         # Check if polygon library is available
         if not POLYGON_CLIENT_AVAILABLE:
@@ -46,7 +53,8 @@ class DataProvider:
         else:
             try:
                 logger.info(f"Initializing Polygon client with key starting with: {self.polygon_api_key[:4]}...")
-                self.polygon_client = RESTClient(self.polygon_api_key, timeout=15)
+                # Removed timeout parameter to avoid unexpected keyword argument error
+                self.polygon_client = RESTClient(self.polygon_api_key)
                 logger.info("Polygon.io client initialized successfully")
                 
                 # Test the connection with a simple API call
@@ -189,7 +197,6 @@ class DataProvider:
             logger.error(f"Polygon fetch error for {polygon_ticker}: {e}")
             return pd.DataFrame()
 
-    # Rest of the class implementation remains unchanged...
     def apply_technical_indicators(self, df):
         """Calculate and add technical indicators to the dataframe."""
         if df.empty:

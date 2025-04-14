@@ -161,6 +161,20 @@ class IGInterface:
             logger.error(f"Failed to fetch IG open positions: {e}", exc_info=True)
             return pd.DataFrame()
 
+    def fetch_market_snapshots(self, epics):
+        """Fetch market snapshots for multiple epics."""
+        if not self.ig_service:
+            logger.error("IG service not connected.")
+            return {}
+            
+        snapshots = {}
+        for epic in epics:
+            snapshot = self.fetch_market_snapshot(epic)
+            if snapshot:
+                snapshots[epic] = snapshot
+                
+        return snapshots
+
     def fetch_market_snapshot(self, epic: str):
         if not self.ig_service:
             logger.error("IG service not connected.")
