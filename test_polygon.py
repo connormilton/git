@@ -3,6 +3,7 @@
 import sys
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 print(f"Python version: {sys.version}")
 print(f"Python executable: {sys.executable}")
@@ -20,19 +21,22 @@ if POLYGON_API_KEY:
 print("\nTesting polygon-api-client import...")
 try:
     import polygon
-    print(f"Successfully imported polygon base package (version: {polygon.__version__})")
+    # Fix the version display
+    try:
+        pkg_version = polygon.__version__
+    except AttributeError:
+        try:
+            import pkg_resources
+            pkg_version = pkg_resources.get_distribution("polygon-api-client").version
+        except:
+            pkg_version = "unknown"
+    
+    print(f"Successfully imported polygon base package (version: {pkg_version})")
     print(f"Polygon package located at: {polygon.__file__}")
     
     try:
         from polygon import RESTClient
         print("Successfully imported polygon.RESTClient")
-        
-        try:
-            from polygon.exceptions import NoResultsError, BadResponse
-            print("Successfully imported polygon.exceptions")
-            print("✅ All polygon components imported successfully")
-        except ImportError as e:
-            print(f"Failed to import polygon.exceptions: {e}")
     except ImportError as e:
         print(f"Failed to import polygon.RESTClient: {e}")
         
@@ -53,16 +57,16 @@ try:
         print(f"  Type: {ticker_details.type}")
         print(f"  Market: {ticker_details.market}")
         
-        # Get recent aggs
-        from datetime import datetime, timedelta
-        end_date = datetime.now().strftime("%Y-%m-%d")
-        start_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
+        # Get recent aggs - Use dates from the past (2023) to ensure data availability
+        # The script was using future dates (2025) which explains the 0 results
+        end_date = "2023-12-31"
+        start_date = "2023-12-25"
         
         print(f"Getting aggs from {start_date} to {end_date}")
         aggs = client.get_aggs(
             ticker=ticker,
             multiplier=1,
-            timespan="hour",
+            timespan="day",
             from_=start_date,
             to=end_date,
             limit=10

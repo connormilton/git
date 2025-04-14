@@ -29,10 +29,10 @@ class AdvancedRiskManager:
         }
         
         # Risk parameters with defaults
-        self.base_risk_per_trade = config.get('RISK_PER_TRADE_PERCENT', decimal.Decimal('2.0'))
+        self.base_risk_per_trade = config.get('RISK_PER_TRADE_PERCENT', decimal.Decimal('2.5'))
         self.max_total_risk = config.get('MAX_TOTAL_RISK_PERCENT', decimal.Decimal('30.0'))
-        self.per_currency_risk_cap = config.get('PER_CURRENCY_RISK_CAP', decimal.Decimal('15.0'))
-        self.margin_buffer = config.get('MARGIN_BUFFER_FACTOR', decimal.Decimal('0.90'))
+        self.per_currency_risk_cap = config.get('PER_CURRENCY_RISK_CAP', decimal.Decimal('10.0'))
+        self.margin_buffer = config.get('MARGIN_BUFFER_FACTOR', decimal.Decimal('0.80'))
         
         # Default kelly fraction to apply (0.5 = half-kelly)
         self.kelly_fraction = decimal.Decimal('0.5')
@@ -159,7 +159,7 @@ class AdvancedRiskManager:
     def _extract_currency_pair(self, epic):
         """Extract base and quote currencies from epic."""
         if not isinstance(epic, str):
-            return None
+            return None, None
             
         # Handle known non-currency pairs
         if epic in ['CS.D.USCGC.TODAY.IP']:  # Gold
@@ -174,7 +174,7 @@ class AdvancedRiskManager:
             if len(pair) == 6 and pair.isupper():
                 return (pair[:3], pair[3:])
                 
-        return None
+        return None, None
 
     def _update_performance_multiplier(self):
         """Update performance-based risk multiplier."""
@@ -494,17 +494,17 @@ class AdvancedRiskManager:
             return None, "Size calculation error"
 
         # 10. Ensure minimum deal size
-        min_deal_size = instrument_details.get('minDealSize', decimal.Decimal("0.1"))
+        min_deal_size = instrument_details.get('minDealSize', decimal.Decimal("0.01"))
         final_size = max(min_deal_size, calculated_size)
         if calculated_size < min_deal_size:
             logger.warning(f"Calculated size {calculated_size:.2f} < Min {min_deal_size} for {epic}. Using Min.")
 
-        # 11. Check margin requirements and potentially adjust size - ADDED CODE
+        # 11. Check margin requirements and potentially adjust size
         margin_factor = instrument_details.get('marginFactor')
         if margin_factor is not None and margin_factor > 0 and signal_price > 0:
             try:
                 margin_needed = final_size * signal_price * margin_factor
-                margin_buffer_factor = decimal.Decimal('0.7')  # Using 70% of available margin
+                margin_buffer_factor = decimal.Decimal('0.8')  # Using 70% of available margin
                 effective_available = self.available_funds * margin_buffer_factor
                 
                 # If margin required exceeds available, reduce position size

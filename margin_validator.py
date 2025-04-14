@@ -26,7 +26,7 @@ class MarginValidator:
         self.portfolio = portfolio
         
         # Minimum deal sizes by broker (hardcoded defaults)
-        self.default_min_deal_size = decimal.Decimal('0.125')  # Most common for IG mini contracts
+        self.default_min_deal_size = decimal.Decimal('0.01')  # Most common for IG mini contracts
         
         # Instrument detail cache to reduce API calls
         self.instrument_cache = {}
@@ -140,7 +140,7 @@ class MarginValidator:
         max_affordable_size = (available_margin * margin_buffer) / (current_price * margin_factor)
         
         # Calculate risk parameters
-        risk_per_trade_pct = decimal.Decimal(str(self.config.get('RISK_PER_TRADE_PERCENT', 2.0)))
+        risk_per_trade_pct = decimal.Decimal(str(self.config.get('RISK_PER_TRADE_PERCENT', 3.0)))
         max_risk_amount = balance * (risk_per_trade_pct / 100)
         
         # Calculate size based on risk and stop distance

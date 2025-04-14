@@ -12,7 +12,14 @@ import os
 # Check if polygon library is available
 try:
     from polygon import RESTClient
-    from polygon.exceptions import NoResultsError, BadResponse
+    # Import Exception classes only if they exist
+    try:
+        from polygon.exceptions import NoResultsError, BadResponse
+    except ImportError:
+        # Create fallback exception classes if they don't exist
+        NoResultsError = type('NoResultsError', (Exception,), {})
+        BadResponse = type('BadResponse', (Exception,), {})
+    
     POLYGON_CLIENT_AVAILABLE = True
     logging.getLogger("DataProvider").info("Polygon library is available")
 except ImportError:
@@ -39,7 +46,7 @@ class DataProvider:
         else:
             try:
                 logger.info(f"Initializing Polygon client with key starting with: {self.polygon_api_key[:4]}...")
-                self.polygon_client = RESTClient(self.polygon_api_key, timeout=30)
+                self.polygon_client = RESTClient(self.polygon_api_key, timeout=15)
                 logger.info("Polygon.io client initialized successfully")
                 
                 # Test the connection with a simple API call
@@ -51,31 +58,15 @@ class DataProvider:
         self.indicator_cache = {}
         self.last_cache_reset = datetime.now(timezone.utc)
         self.cache_ttl = timedelta(minutes=15)  # Cache technical indicators for 15 minutes
-        
-        # Cache for real-time quotes
-        self.quote_cache = {}
-        self.last_quote_reset = datetime.now(timezone.utc)
-        self.quote_ttl = timedelta(seconds=30)  # Cache quotes for 30 seconds
 
     def _test_polygon_connection(self):
         """Test Polygon.io API connection with a simple call"""
         try:
-            # Try getting a quote for a common forex pair
+            # Try getting ticker details for a common forex pair
             ticker = "C:EURUSD"
-            try:
-                last_quote = self.polygon_client.get_last_quote(ticker)
-                if hasattr(last_quote, 'ask_price') and hasattr(last_quote, 'bid_price'):
-                    logger.info(f"Polygon connection test successful. Got quote for {ticker}: Ask={last_quote.ask_price}, Bid={last_quote.bid_price}")
-                    return True
-                else:
-                    logger.warning(f"Polygon connection test: Got quote for {ticker}, but structure unexpected. Attributes: {dir(last_quote)}")
-                    return True
-            except Exception as quote_err:
-                logger.warning(f"Failed to get last quote for {ticker}, trying ticker details: {quote_err}")
-                # Fallback to ticker details if quotes aren't working
-                ticker_details = self.polygon_client.get_ticker_details(ticker)
-                logger.info(f"Polygon connection test successful using ticker details for {ticker}")
-                return True
+            ticker_details = self.polygon_client.get_ticker_details(ticker=ticker)
+            logger.info(f"Polygon connection test successful. Got details for {ticker}: {ticker_details.name}")
+            return True
         except Exception as e:
             logger.error(f"Polygon connection test failed: {e}")
             return False
@@ -87,11 +78,6 @@ class DataProvider:
             self.indicator_cache = {}
             self.last_cache_reset = now
             logger.info("Technical indicator cache reset.")
-            
-        if now - self.last_quote_reset > self.quote_ttl:
-            self.quote_cache = {}
-            self.last_quote_reset = now
-            logger.debug("Quote cache reset.")
 
     def get_polygon_ticker(self, epic):
         """Convert IG epic to Polygon ticker symbol"""
@@ -114,89 +100,6 @@ class DataProvider:
             
         return ticker
 
-    def get_latest_quote(self, epic):
-        """Get the latest quote for an instrument from Polygon."""
-        if not self.polygon_client:
-            logger.error("Polygon client not available.")
-            return None
-            
-        polygon_ticker = self.get_polygon_ticker(epic)
-        if not polygon_ticker:
-            logger.error(f"Cannot fetch quote for {epic}: No mapping.")
-            return None
-            
-        # Check cache first
-        self.reset_cache_if_needed()
-        if polygon_ticker in self.quote_cache:
-            logger.debug(f"Using cached quote for {polygon_ticker}")
-            return self.quote_cache[polygon_ticker]
-            
-        try:
-            logger.debug(f"Fetching latest quote for {polygon_ticker}")
-            last_quote = self.polygon_client.get_last_quote(polygon_ticker)
-            
-            if not last_quote:
-                logger.warning(f"No quote data available for {polygon_ticker}")
-                return None
-            
-            # Format the quote data - with robust attribute checking
-            try:
-                # Check if we have the expected attributes
-                if hasattr(last_quote, 'ask_price') and hasattr(last_quote, 'bid_price'):
-                    ask_price = decimal.Decimal(str(last_quote.ask_price))
-                    bid_price = decimal.Decimal(str(last_quote.bid_price))
-                    
-                    # Get timestamp if available, otherwise use current time
-                    timestamp = datetime.now(timezone.utc).timestamp()
-                    if hasattr(last_quote, 'timestamp'):
-                        try:
-                            timestamp = float(last_quote.timestamp) / 1000  # Convert milliseconds to seconds
-                        except (ValueError, TypeError, AttributeError):
-                            pass  # Keep default timestamp
-                    
-                    quote_data = {
-                        'ask': ask_price,
-                        'bid': bid_price,
-                        'timestamp': timestamp
-                    }
-                    
-                    # Cache the quote
-                    self.quote_cache[polygon_ticker] = quote_data
-                    
-                    return quote_data
-                else:
-                    # Log the actual structure for debugging
-                    logger.warning(f"Unexpected quote structure for {polygon_ticker}. Attributes: {dir(last_quote)}")
-                    
-                    # Try to extract relevant attributes dynamically
-                    quote_dict = {}
-                    for attr_name in dir(last_quote):
-                        if not attr_name.startswith('_') and attr_name not in ['raw', 'ticker']:
-                            try:
-                                quote_dict[attr_name] = getattr(last_quote, attr_name)
-                            except:
-                                pass
-                    
-                    logger.debug(f"Available quote attributes: {quote_dict}")
-                    
-                    # Fallback to any price data we can find
-                    if hasattr(last_quote, 'last_price'):
-                        price = decimal.Decimal(str(last_quote.last_price))
-                        quote_data = {
-                            'ask': price * decimal.Decimal('1.0001'),  # Tiny spread
-                            'bid': price * decimal.Decimal('0.9999'),
-                            'timestamp': datetime.now(timezone.utc).timestamp()
-                        }
-                        return quote_data
-                    
-                    return None
-            except Exception as attr_e:
-                logger.error(f"Error processing quote attributes for {polygon_ticker}: {attr_e}")
-                return None
-        except Exception as e:
-            logger.error(f"Error fetching quote for {polygon_ticker}: {e}")
-            return None
-
     def get_historical_data_polygon(self, epic, end_dt=None, days_history=None, timeframe="hour"):
         """Fetch historical price data from Polygon.io for a specific instrument."""
         if not self.polygon_client:
@@ -217,8 +120,12 @@ class DataProvider:
         if end_dt is None:
             end_dt = datetime.now(timezone.utc)
             
-        # Make sure we're using actual historical dates, not future dates
-        end_dt = min(end_dt, datetime.now(timezone.utc))
+        # Make sure we're using valid historical dates, not future dates
+        current_dt = datetime.now(timezone.utc)
+        if end_dt > current_dt:
+            logger.warning(f"Adjusted end_dt from {end_dt} to current time {current_dt} (future dates have no data)")
+            end_dt = current_dt
+            
         start_dt = end_dt - timedelta(days=days_history)
         end_date_str = end_dt.strftime('%Y-%m-%d')
         start_date_str = start_dt.strftime('%Y-%m-%d')
@@ -243,203 +150,46 @@ class DataProvider:
             
             if not aggs:
                 logger.warning(f"No results from Polygon for {polygon_ticker}")
-                
-                # Use current quote to generate a simple dataframe
-                quote = self.get_latest_quote(epic)
-                if quote:
-                    # Create a minimal dataframe with current data
-                    now = datetime.now(timezone.utc)
-                    df = pd.DataFrame([{
-                        'Timestamp': now,
-                        'Open': quote['bid'],
-                        'High': quote['ask'], 
-                        'Low': quote['bid'],
-                        'Close': (quote['ask'] + quote['bid']) / 2,
-                        'Volume': decimal.Decimal('100')  # Placeholder
-                    }])
-                    df = df.set_index('Timestamp')
-                    logger.info(f"Created minimal dataframe with current quote for {polygon_ticker}")
-                    return df
                 return pd.DataFrame()
 
             # Convert to DataFrame
-            try:
-                df = pd.DataFrame(aggs)
-                
-                # Debug what columns we actually have
-                logger.debug(f"Polygon aggs columns: {df.columns.tolist()}")
-                
-                # Handle different column naming possibilities
-                column_mapping = {
-                    'o': 'Open',
-                    'h': 'High',
-                    'l': 'Low',
-                    'c': 'Close',
-                    'v': 'Volume',
-                    't': 'Timestamp',  # Polygon likely uses 't' instead of 'Timestamp'
-                    'open': 'Open',
-                    'high': 'High',
-                    'low': 'Low',
-                    'close': 'Close',
-                    'volume': 'Volume',
-                    'timestamp': 'Timestamp'
-                }
-                
-                # Rename columns that exist in our DataFrame
-                df = df.rename(columns={k: v for k, v in column_mapping.items() if k in df.columns})
-                
-                # Now safely handle the timestamp conversion
-                if 'Timestamp' in df.columns:
-                    df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
-                    df = df.set_index('Timestamp')
-                elif 'timestamp' in df.columns:
-                    df['Timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
-                    df = df.set_index('Timestamp')
-                else:
-                    # Try to find any column that might be a timestamp
-                    logger.error(f"No Timestamp column found in Polygon response. Columns: {df.columns}")
-                    for col in df.columns:
-                        if 'time' in col.lower():
-                            logger.info(f"Trying to use '{col}' as timestamp")
-                            try:
-                                df['Timestamp'] = pd.to_datetime(df[col], unit='ms', utc=True)
-                                df = df.set_index('Timestamp')
-                                break
-                            except:
-                                logger.warning(f"Failed to convert '{col}' to timestamp")
-                    
-                    # If we still don't have an index, create one
-                    if 'Timestamp' not in df.columns and not isinstance(df.index, pd.DatetimeIndex):
-                        logger.warning(f"Creating artificial timestamp index for {polygon_ticker}")
-                        df['Timestamp'] = pd.date_range(end=end_dt, periods=len(df), freq=timeframe)
-                        df = df.set_index('Timestamp')
+            df = pd.DataFrame(aggs)
+            df = df.rename(columns={
+                'o': 'Open',
+                'h': 'High',
+                'l': 'Low',
+                'c': 'Close',
+                'v': 'Volume',
+                't': 'Timestamp'
+            })
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], unit='ms', utc=True)
+            df = df.set_index('Timestamp')
 
-                # Ensure we have all required OHLCV columns with correct types
-                for col in ['Open', 'High', 'Low', 'Close']:
-                    if col in df.columns:
-                        df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
-                    else:
-                        # If missing, duplicate the closest equivalent
-                        if 'Close' in df.columns and col != 'Close':
-                            df[col] = df['Close']
-                        else:
-                            # We need at least one price column
-                            logger.error(f"Missing required column {col} for {polygon_ticker}")
-                            return pd.DataFrame()
+            for col in ['Open', 'High', 'Low', 'Close']:
+                if col in df.columns:
+                    df[col] = df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
 
-                if 'Volume' in df.columns:
-                    df['Volume'] = df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
-                else:
-                    df['Volume'] = decimal.Decimal('0')
+            if 'Volume' in df.columns:
+                df['Volume'] = df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
 
-                # Filter by date range
-                start_dt_aware = pd.Timestamp(start_dt.replace(tzinfo=timezone.utc))
-                end_dt_aware = pd.Timestamp(end_dt.replace(tzinfo=timezone.utc))
-                df = df[(df.index >= start_dt_aware) & (df.index <= end_dt_aware)]
+            start_dt_aware = pd.Timestamp(start_dt.replace(tzinfo=timezone.utc))
+            end_dt_aware = pd.Timestamp(end_dt.replace(tzinfo=timezone.utc))
+            df = df[(df.index >= start_dt_aware) & (df.index <= end_dt_aware)]
 
-                logger.info(f"Fetched {len(df)} bars for {polygon_ticker} ({epic}) from Polygon.")
-                return df
+            logger.info(f"Fetched {len(df)} bars for {polygon_ticker} ({epic}) from Polygon.")
+            
+            # Log first/last data points for debugging
+            if not df.empty:
+                logger.debug(f"First data point: {df.iloc[0].to_dict()}")
+                logger.debug(f"Last data point: {df.iloc[-1].to_dict()}")
                 
-            except Exception as df_err:
-                logger.error(f"Error processing Polygon data for {polygon_ticker}: {df_err}")
-                
-                # Try a more direct approach with the aggregates
-                try:
-                    # Create dataframe manually from aggs
-                    data = []
-                    for agg in aggs:
-                        data_point = {}
-                        
-                        # Extract attributes from agg object
-                        if hasattr(agg, 'timestamp'):
-                            data_point['Timestamp'] = pd.to_datetime(agg.timestamp, unit='ms', utc=True)
-                        else:
-                            # Use the 't' attribute if available
-                            for attr_name in ['t', 'time', 'ts']:
-                                if hasattr(agg, attr_name):
-                                    data_point['Timestamp'] = pd.to_datetime(getattr(agg, attr_name), unit='ms', utc=True)
-                                    break
-                            
-                            # Fallback to current time if no timestamp found
-                            if 'Timestamp' not in data_point:
-                                data_point['Timestamp'] = datetime.now(timezone.utc)
-                        
-                        # Extract price data
-                        for k, v in [('o', 'Open'), ('h', 'High'), ('l', 'Low'), ('c', 'Close'), ('v', 'Volume')]:
-                            if hasattr(agg, k):
-                                data_point[v] = getattr(agg, k)
-                            elif hasattr(agg, v.lower()):
-                                data_point[v] = getattr(agg, v.lower())
-                        
-                        # Ensure we have all price fields
-                        if 'Close' in data_point and not all(k in data_point for k in ['Open', 'High', 'Low']):
-                            close_val = data_point['Close']
-                            for k in ['Open', 'High', 'Low']:
-                                if k not in data_point:
-                                    data_point[k] = close_val
-                        
-                        data.append(data_point)
-                    
-                    if data:
-                        manual_df = pd.DataFrame(data)
-                        manual_df = manual_df.set_index('Timestamp')
-                        
-                        # Convert to Decimal
-                        for col in ['Open', 'High', 'Low', 'Close']:
-                            if col in manual_df.columns:
-                                manual_df[col] = manual_df[col].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else pd.NA)
-                        
-                        if 'Volume' in manual_df.columns:
-                            manual_df['Volume'] = manual_df['Volume'].apply(lambda x: decimal.Decimal(str(x)) if pd.notna(x) else decimal.Decimal('0'))
-                        else:
-                            manual_df['Volume'] = decimal.Decimal('0')
-                        
-                        logger.info(f"Created manual DataFrame with {len(manual_df)} rows for {polygon_ticker}")
-                        return manual_df
-                    
-                except Exception as manual_err:
-                    logger.error(f"Failed to create manual DataFrame for {polygon_ticker}: {manual_err}")
-                
-                # Final fallback to a placeholder dataframe
-                quote = self.get_latest_quote(epic)
-                if quote:
-                    # Create a small dataframe with just the current quote
-                    now = datetime.now(timezone.utc)
-                    df = pd.DataFrame([{
-                        'Timestamp': now,
-                        'Open': quote['bid'],
-                        'High': quote['ask'], 
-                        'Low': quote['bid'],
-                        'Close': (quote['ask'] + quote['bid']) / 2,
-                        'Volume': decimal.Decimal('100')  # Placeholder
-                    }])
-                    df = df.set_index('Timestamp')
-                    logger.info(f"Created fallback dataframe from current quote for {polygon_ticker}")
-                    return df
-                
-                return pd.DataFrame()
-                
+            return df
         except Exception as e:
+            # Use more generic error handling instead of specific exceptions
             logger.error(f"Polygon fetch error for {polygon_ticker}: {e}")
-            
-            # If error, try to create fallback dataframe
-            quote = self.get_latest_quote(epic)
-            if quote:
-                now = datetime.now(timezone.utc)
-                df = pd.DataFrame([{
-                    'Timestamp': now,
-                    'Open': quote['bid'],
-                    'High': quote['ask'], 
-                    'Low': quote['bid'],
-                    'Close': (quote['ask'] + quote['bid']) / 2,
-                    'Volume': decimal.Decimal('100')  # Placeholder
-                }])
-                df = df.set_index('Timestamp')
-                logger.info(f"Created fallback dataframe from current quote after error for {polygon_ticker}")
-                return df
-            
             return pd.DataFrame()
 
+    # Rest of the class implementation remains unchanged...
     def apply_technical_indicators(self, df):
         """Calculate and add technical indicators to the dataframe."""
         if df.empty:
@@ -814,61 +564,20 @@ class DataProvider:
                 try:
                     tech_df = future.result()
                     
-                    # If we don't have technical data, try to get at least current quotes
-                    if tech_df.empty:
-                        quote = self.get_latest_quote(epic)
-                        if quote:
-                            mid_price = (quote['ask'] + quote['bid']) / 2
-                            results[epic] = {
-                                'epic': epic,
-                                'price': {
-                                    'bid': float(quote['bid']),
-                                    'ask': float(quote['ask']),
-                                    'mid': float(mid_price)
-                                },
-                                'indicators': {
-                                    'trend': 0,  # Neutral
-                                    'rsi': 50,   # Neutral
-                                    'volatility': 1.0  # Average
-                                },
-                                'regime': 'unknown',
-                                'timestamp': datetime.now(timezone.utc).isoformat()
-                            }
-                        continue
-                        
                     if not tech_df.empty:
                         # Get the most recent data point
                         latest = tech_df.iloc[-1].to_dict()
                         
-                        # Get latest quote if available for more accurate current price
-                        current_price = {}
-                        quote = self.get_latest_quote(epic)
-                        if quote:
-                            mid_price = (quote['ask'] + quote['bid']) / 2
-                            current_price = {
-                                'bid': float(quote['bid']),
-                                'ask': float(quote['ask']),
-                                'mid': float(mid_price),
-                                'open': float(latest.get('Open', mid_price)),
-                                'high': float(latest.get('High', quote['ask'])),
-                                'low': float(latest.get('Low', quote['bid'])),
-                                'close': float(latest.get('Close', mid_price)),
-                                'volume': float(latest.get('Volume', 0))
-                            }
-                        else:
-                            # Fallback to historical data
-                            current_price = {
+                        # Create a market snapshot with technicals
+                        snapshot = {
+                            'epic': epic,
+                            'price': {
                                 'open': float(latest.get('Open', 0)),
                                 'high': float(latest.get('High', 0)),
                                 'low': float(latest.get('Low', 0)),
                                 'close': float(latest.get('Close', 0)),
                                 'volume': float(latest.get('Volume', 0))
-                            }
-                        
-                        # Create a market snapshot with technicals
-                        snapshot = {
-                            'epic': epic,
-                            'price': current_price,
+                            },
                             'indicators': {
                                 'trend': int(latest.get('Trend', 0)),
                                 'rsi': float(latest.get('RSI', 50)),

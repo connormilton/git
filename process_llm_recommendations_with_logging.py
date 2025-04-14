@@ -6,8 +6,8 @@ from datetime import datetime, timezone
 logger = logging.getLogger("TradingBot")
 
 def process_llm_recommendations_with_logging(recommendations, portfolio, risk_manager, 
-                                            data_provider, broker, executor, 
-                                            decision_logger, decision_id):
+                                           data_provider, broker, executor, 
+                                           decision_logger, decision_id):
     """Process LLM recommendations with execution logging."""
     try:
         open_positions_df = portfolio.get_open_positions_df()
@@ -343,7 +343,6 @@ def process_llm_recommendations_with_logging(recommendations, portfolio, risk_ma
                     
                     continue
 
-                # Note: Changed to call check_portfolio_constraints instead of check_portfolio_constraints
                 is_viable, constraint_reason = risk_manager.check_portfolio_constraints(final_trade_details, instrument_details, portfolio, data_provider)
                 if is_viable:
                     logger.info(f"Executing viable trade for {epic}...")
@@ -427,4 +426,4 @@ def process_llm_recommendations_with_logging(recommendations, portfolio, risk_ma
         except Exception as log_err:
             logger.error(f"Could not log error to decision logger: {log_err}")
             
-    return
+    return True
